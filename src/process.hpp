@@ -38,6 +38,7 @@ private:
   std::vector<std::string> m_logs;
   std::mutex m_mutex; // protects state, logs, vars, pc
   // runtime helpers:
+  uint32_t m_delay_remaining{0};
   uint32_t m_sleep_remaining{0};
   uint32_t m_for_stack_depth{0};
   ProcessMetrics m_metrics;
