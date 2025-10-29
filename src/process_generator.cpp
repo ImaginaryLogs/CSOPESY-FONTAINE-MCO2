@@ -6,6 +6,15 @@
 #include <random>
 #include <thread>
 
+// TODO:
+// - Make next_id_ atomic or protected explicitly.
+// - Add DEBUG_GENERATOR logging to record created process id/name and
+// instruction counts (useful for debugging expansion).
+// - Modify generator to control post-unroll instruction budget rather than
+// top-level count.
+// - Add a small unit test / smoke harness to generate a process, unroll it, and
+// assert the unrolled size is within a limit.
+
 // Utility: random integer in [min, max]
 static uint32_t rand_range(uint32_t min, uint32_t max) {
   // Guard: if min > max, swap to avoid UB
@@ -31,11 +40,10 @@ static Instruction random_instruction(int depth = 0) {
       static_cast<uint32_t>(sizeof(types) / sizeof(types[0]));
 
   // Prevent deep FOR nesting. If at or beyond max depth, disallow FOR.
-  const int MAX_FOR_DEPTH = 3;
   InstructionType t;
   do {
     t = types[rand_range(0, types_count - 1)];
-  } while (t == InstructionType::FOR && depth >= MAX_FOR_DEPTH);
+  } while (t == InstructionType::FOR && depth >= FOR_MAX_NESTING);
 
   Instruction instr;
   instr.type = t;
@@ -84,15 +92,15 @@ ProcessGenerator::ProcessGenerator(const Config &cfg, Scheduler &sched)
 
 // Start thread loop
 void ProcessGenerator::start() {
-  if (running_)
+  if (running_.load())
     return;
-  running_ = true;
+  running_.store(true);
   thread_ = std::thread(&ProcessGenerator::loop, this);
 }
 
 // Stop generator
 void ProcessGenerator::stop() {
-  running_ = false;
+  running_.store(false);
   if (thread_.joinable())
     thread_.join();
 }
@@ -100,7 +108,7 @@ void ProcessGenerator::stop() {
 // Internal loop
 void ProcessGenerator::loop() {
   using namespace std::chrono_literals;
-  while (running_) {
+  while (running_.load()) {
     // sleep between process generations
     std::this_thread::sleep_for(std::chrono::seconds(cfg_.batch_process_freq));
 
@@ -113,7 +121,7 @@ void ProcessGenerator::loop() {
 
     // Assign id first (post-increment) and use the same id for the name to
     // avoid off-by-one mismatch between id and name.
-    uint32_t id = next_id_++;
+    uint32_t id = next_id_.fetch_add(1);
     auto process = std::make_shared<Process>(id, "P" + std::to_string(id), ins);
 
     sched_.submit_process(process);
