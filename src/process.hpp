@@ -34,7 +34,7 @@ private:
   uint32_t m_id;
   std::string m_name;
   std::vector<Instruction> m_instr;
-  ProcessState m_state;
+  ProcessState m_state{ProcessState::NEW};
   std::vector<std::string> m_logs;
   std::mutex m_mutex; // protects state, logs, vars, pc
   // runtime helpers:
