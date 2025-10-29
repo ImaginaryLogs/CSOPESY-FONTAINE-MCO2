@@ -1,4 +1,4 @@
-# CSOPESY-MCO1 <!-- omit from toc -->
+# CSOPESY-FONTAINE <!-- omit from toc -->
 
 ![title](./assets/readme/furina-4.jpg)
 
