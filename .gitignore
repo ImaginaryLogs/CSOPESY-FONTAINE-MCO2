@@ -1,0 +1,6 @@
+# Artifacts
+build
+bin
+
+# Others
+.github/copilot-instructions.md

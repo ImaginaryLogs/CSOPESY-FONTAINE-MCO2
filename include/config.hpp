@@ -1,0 +1,15 @@
+#pragma once
+#include <cstdint>
+#include <string>
+
+struct Config {
+  uint32_t num_cpu = 4;
+  std::string scheduler = "rr"; // "rr" or "fcfs"
+  uint32_t quantum_cycles = 5;
+  uint32_t batch_process_freq = 1;
+  uint32_t min_ins = 1000;
+  uint32_t max_ins = 2000;
+  uint32_t delay_per_exec = 0;
+};
+
+Config load_config(const std::string &path);
