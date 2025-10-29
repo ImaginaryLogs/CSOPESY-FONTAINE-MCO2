@@ -1,4 +1,4 @@
-#include "cli.hpp"
+#include "../include/cli.hpp"
 
 int main() {
   CLI app;

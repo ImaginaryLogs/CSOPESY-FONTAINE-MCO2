@@ -1,4 +1,3 @@
-// cli.h
 #pragma once
 #include "config.hpp"
 #include "cpu_worker.hpp"
