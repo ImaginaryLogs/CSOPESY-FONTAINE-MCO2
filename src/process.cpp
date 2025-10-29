@@ -8,6 +8,11 @@
 #include <sstream>
 #include <stdexcept>
 
+// TODO:
+// - Scheduler decrements m_delay_remaining per tick before calling
+// execute_tick().
+// - Scheduler sets m_metrics.created_tick at process start.
+
 // Enable debug logging by uncommenting:
 // #define DEBUG_PROCESS
 
