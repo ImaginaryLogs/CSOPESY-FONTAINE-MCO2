@@ -1,6 +1,8 @@
 #pragma once
 #include "config.hpp"
 #include "scheduler.hpp"
+#include <atomic>
+#include <thread>
 
 // May also be better as a Singleton as only one generator is needed
 class ProcessGenerator {
@@ -15,5 +17,5 @@ private:
   Scheduler &sched_;
   std::thread thread_;
   std::atomic<bool> running_{false};
-  uint32_t next_id_{1};
+  std::atomic<uint32_t> next_id_{1};
 };
