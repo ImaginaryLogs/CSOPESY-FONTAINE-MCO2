@@ -45,7 +45,12 @@ static uint16_t clamp_uint16(int64_t v) {
   return static_cast<uint16_t>(v);
 }
 
-// helper: is number
+/**
+ * Helper: Check if a string represents a valid number
+ * Accepts optional +/- prefix followed by digits
+ * @param s String to check
+ * @return true if string is a valid number format
+ */
 static bool is_number(const std::string &s) {
   if (s.empty())
     return false;
@@ -58,7 +63,39 @@ static bool is_number(const std::string &s) {
   return true;
 }
 
-// expand FOR recursively (simple unroll). Limits nesting by given depth.
+/**
+ * Expands FOR loops by unrolling them into a flat sequence of instructions
+ *
+ * Strategy:
+ * 1. If not a FOR, append instruction as-is
+ * 2. If FOR loop:
+ *    - Parse repeat count from args[0]
+ *    - For each repetition:
+ *      - For each nested instruction:
+ *        - If nested FOR, recurse with depth+1
+ *        - Otherwise append instruction
+ * 3. Depth limit of 10 prevents infinite recursion
+ *    (though spec mentions max depth of 3)
+ *
+ * Example:
+ *   FOR(2)
+ *     PRINT(Hi)
+ *     FOR(3)
+ *       ADD(x,x,1)
+ * Unrolls to:
+ *   PRINT(Hi)
+ *   ADD(x,x,1)
+ *   ADD(x,x,1)
+ *   ADD(x,x,1)
+ *   PRINT(Hi)
+ *   ADD(x,x,1)
+ *   ADD(x,x,1)
+ *   ADD(x,x,1)
+ *
+ * @param instr Instruction to potentially unroll
+ * @param out Vector to append unrolled instructions to
+ * @param depth Current recursion depth (max 10)
+ */
 static void unroll_instruction(const Instruction &instr,
                                std::vector<Instruction> &out, int depth = 0) {
   if (instr.type != InstructionType::FOR) {
@@ -166,7 +203,16 @@ std::string Process::smi_summary() {
   return oss.str();
 }
 
-// parse token: either number or variable -> returns uint16 value
+/**
+ * Parses a token into a uint16_t value
+ * Token can be either:
+ * 1. A literal number (will be clamped to uint16_t range)
+ * 2. A variable name (returns current value, or 0 if undefined)
+ *
+ * @param token String to parse
+ * @param vars Current variable storage map
+ * @return Parsed and clamped value
+ */
 static uint16_t
 read_token_value(const std::string &token,
                  std::unordered_map<std::string, uint16_t> &vars) {
@@ -187,7 +233,14 @@ read_token_value(const std::string &token,
   return it->second;
 }
 
-// set variable
+/**
+ * Sets a variable's value in the storage map
+ * Creates the variable if it doesn't exist
+ *
+ * @param name Variable name
+ * @param v Value to set (already clamped to uint16_t)
+ * @param vars Variable storage map to update
+ */
 static void set_var_value(const std::string &name, uint16_t v,
                           std::unordered_map<std::string, uint16_t> &vars) {
   vars[name] = v;
@@ -217,18 +270,33 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   consumed_ticks = 1; // default one tick consumed
   std::lock_guard<std::mutex> lk(m_mutex);
 
-  if (m_state == ProcessState::FINISHED)
+  if (m_state == ProcessState::FINISHED) {
+#ifdef DEBUG_PROCESS
+    std::ostringstream dbg;
+    dbg << m_name << ": Already FINISHED at tick " << global_tick
+        << " (finished at " << m_metrics.finished_tick << ")";
+    m_logs.push_back(dbg.str());
+#endif
     return true;
+  }
 
   // If currently sleeping due to SLEEP instruction
   if (m_sleep_remaining > 0) {
     // sleeping is WAITING and consumes 1 tick per call
     --m_sleep_remaining;
-    if (m_sleep_remaining == 0) {
-      m_state = ProcessState::READY;
-    } else {
-      m_state = ProcessState::WAITING;
+    ProcessState new_state =
+        (m_sleep_remaining == 0) ? ProcessState::READY : ProcessState::WAITING;
+#ifdef DEBUG_PROCESS
+    if (new_state != m_state) {
+      std::ostringstream dbg;
+      dbg << m_name << ": State "
+          << (m_state == ProcessState::WAITING ? "WAITING" : "RUNNING")
+          << " -> " << (new_state == ProcessState::READY ? "READY" : "WAITING")
+          << " (sleep=" << m_sleep_remaining << ")";
+      m_logs.push_back(dbg.str());
     }
+#endif
+    m_state = new_state;
     return false;
   }
 
@@ -267,8 +335,18 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       const std::string &valtok = inst.args[1];
       uint16_t v = read_token_value(valtok, vars);
       set_var_value(var, v, vars);
+#ifdef DEBUG_PROCESS
+      std::ostringstream dbg;
+      dbg << m_name << ": DECLARE " << var << " = " << v;
+      m_logs.push_back(dbg.str());
+#endif
     } else if (inst.args.size() == 1) {
       set_var_value(inst.args[0], 0, vars);
+#ifdef DEBUG_PROCESS
+      std::ostringstream dbg;
+      dbg << m_name << ": DECLARE " << inst.args[0] << " = 0";
+      m_logs.push_back(dbg.str());
+#endif
     }
     ++pc;
     break;
@@ -281,7 +359,14 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       uint16_t a = read_token_value(inst.args[1], vars);
       uint16_t b = read_token_value(inst.args[2], vars);
       uint32_t sum = static_cast<uint32_t>(a) + static_cast<uint32_t>(b);
-      set_var_value(dst, clamp_uint16(sum), vars);
+      uint16_t result = clamp_uint16(sum);
+      set_var_value(dst, result, vars);
+#ifdef DEBUG_PROCESS
+      std::ostringstream dbg;
+      dbg << m_name << ": ADD " << dst << " = " << a << " + " << b << " = "
+          << result << (sum > 65535 ? " (clamped)" : "");
+      m_logs.push_back(dbg.str());
+#endif
     }
     ++pc;
     break;
@@ -293,7 +378,14 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       int32_t a = static_cast<int32_t>(read_token_value(inst.args[1], vars));
       int32_t b = static_cast<int32_t>(read_token_value(inst.args[2], vars));
       int64_t res = static_cast<int64_t>(a) - static_cast<int64_t>(b);
-      set_var_value(dst, clamp_uint16(res), vars);
+      uint16_t result = clamp_uint16(res);
+      set_var_value(dst, result, vars);
+#ifdef DEBUG_PROCESS
+      std::ostringstream dbg;
+      dbg << m_name << ": SUBTRACT " << dst << " = " << a << " - " << b << " = "
+          << result << (res < 0 || res > 65535 ? " (clamped)" : "");
+      m_logs.push_back(dbg.str());
+#endif
     }
     ++pc;
     break;
