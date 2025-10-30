@@ -2,9 +2,56 @@
 #include "../include/instruction.hpp"
 #include "../include/process.hpp"
 #include <chrono>
+#include <iostream>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <thread>
+
+// Enable debug logging for the generator by uncommenting:
+// #define DEBUG_GENERATOR
+
+/**
+ * Convert instruction type to string for debug output
+ */
+static std::string inst_type_to_string(InstructionType t) {
+  switch (t) {
+  case InstructionType::PRINT:
+    return "PRINT";
+  case InstructionType::DECLARE:
+    return "DECLARE";
+  case InstructionType::ADD:
+    return "ADD";
+  case InstructionType::SUBTRACT:
+    return "SUBTRACT";
+  case InstructionType::SLEEP:
+    return "SLEEP";
+  case InstructionType::FOR:
+    return "FOR";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+// Human readable representation of an instruction (args only; nested FORs
+// abbreviated)
+static std::string instr_to_string(const Instruction &instr) {
+  std::ostringstream oss;
+  oss << inst_type_to_string(instr.type);
+  if (!instr.args.empty()) {
+    oss << "(";
+    for (size_t i = 0; i < instr.args.size(); ++i) {
+      if (i)
+        oss << ", ";
+      oss << instr.args[i];
+    }
+    oss << ")";
+  }
+  if (instr.type == InstructionType::FOR && !instr.nested.empty()) {
+    oss << "{" << instr.nested.size() << " nested}";
+  }
+  return oss.str();
+}
 
 // TODO:
 // - Make next_id_ atomic or protected explicitly.
@@ -130,8 +177,22 @@ ProcessGenerator::generate_instructions(uint32_t target_top_level,
   for (uint32_t i = 0; i < target_top_level; ++i) {
     Instruction instr = random_instruction(0);
     uint32_t instr_size = estimate_unrolled_size_for_instr(instr);
+#ifdef DEBUG_GENERATOR
+    {
+      std::ostringstream dbg;
+      dbg << "generator: candidate " << instr_to_string(instr)
+          << " -> estimated_size=" << instr_size;
+      std::clog << dbg.str() << std::endl;
+    }
+#endif
     if (cfg_.max_unrolled_instructions > 0 &&
         estimated_size + instr_size > cfg_.max_unrolled_instructions) {
+#ifdef DEBUG_GENERATOR
+      std::ostringstream dbg;
+      dbg << "generator: budget exceeded (estimated " << estimated_size
+          << ", instr would add " << instr_size << ") - stopping";
+      std::clog << dbg.str() << std::endl;
+#endif
       break;
     }
     estimated_size += instr_size;
@@ -145,12 +206,18 @@ void ProcessGenerator::start() {
   if (running_.load())
     return;
   running_.store(true);
+#ifdef DEBUG_GENERATOR
+  std::clog << "generator: starting" << std::endl;
+#endif
   thread_ = std::thread(&ProcessGenerator::loop, this);
 }
 
 // Stop generator
 void ProcessGenerator::stop() {
   running_.store(false);
+#ifdef DEBUG_GENERATOR
+  std::clog << "generator: stopping" << std::endl;
+#endif
   if (thread_.joinable())
     thread_.join();
 }
@@ -170,9 +237,23 @@ void ProcessGenerator::loop() {
     for (uint32_t i = 0; i < num_instructions; ++i) {
       Instruction instr = random_instruction(0);
       uint32_t instr_size = estimate_unrolled_size_for_instr(instr);
+#ifdef DEBUG_GENERATOR
+      {
+        std::ostringstream dbg;
+        dbg << "generator: candidate " << instr_to_string(instr)
+            << " -> estimated_size=" << instr_size;
+        std::clog << dbg.str() << std::endl;
+      }
+#endif
       if (cfg_.max_unrolled_instructions > 0 &&
           estimated_size + instr_size > cfg_.max_unrolled_instructions) {
         // exceeding budget: stop adding more top-level instructions
+#ifdef DEBUG_GENERATOR
+        std::ostringstream dbg;
+        dbg << "generator: budget exceeded (estimated " << estimated_size
+            << ", instr would add " << instr_size << ") - stopping";
+        std::clog << dbg.str() << std::endl;
+#endif
         break;
       }
       estimated_size += instr_size;
@@ -183,6 +264,15 @@ void ProcessGenerator::loop() {
     // avoid off-by-one mismatch between id and name.
     uint32_t id = next_id_.fetch_add(1);
     auto process = std::make_shared<Process>(id, "P" + std::to_string(id), ins);
+#ifdef DEBUG_GENERATOR
+    {
+      std::ostringstream dbg;
+      dbg << "generator: created process id=" << id
+          << " top_level=" << ins.size()
+          << " estimated_unrolled=" << estimated_size;
+      std::clog << dbg.str() << std::endl;
+    }
+#endif
 
     sched_.submit_process(process);
   }
