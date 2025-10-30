@@ -1,7 +1,7 @@
 #pragma once
 #include "config.hpp"
 #include "cpu_worker.hpp"
-#include "generator.hpp"
+#include "process_generator.hpp"
 #include "reporter.hpp"
 #include "scheduler.hpp"
 #include "screen.hpp"
