@@ -34,8 +34,10 @@ $(BUILD_DIR):
 test: $(TEST_BIN)
 	./$(TEST_BIN)
 
-$(TEST_BIN): $(TEST_SRC) $(OBJ) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
+$(TEST_BIN): $(TEST_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) \
+		$(TEST_SRC) $(filter-out $(SRC_DIR)/main.cpp,$(wildcard $(SRC_DIR)/*.cpp)) \
+		-o $@
 
 run: $(TARGET)
 	./$(TARGET)
