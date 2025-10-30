@@ -9,34 +9,38 @@ TARGET := $(BUILD_DIR)/app
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
-TEST_SRC := $(wildcard tests/*.cpp)
-TEST_BIN := $(BUILD_DIR)/test_generator
+# test target name (no .cpp extension)
+TEST := test_process_generator
+TEST_SRC := tests/$(TEST).cpp
+TEST_BIN := $(BUILD_DIR)/$(TEST)
 
-.PHONY: all test run clean rebuild
+.PHONY: all run test clean rebuild
 
 all: $(TARGET)
 
+# Main app
 $(TARGET): $(OBJ) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
-# compile .cpp -> .o in build/
+# Object build rule
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
-# ensure build dir exists
+# Ensure build directory exists
 $(BUILD_DIR):
 	mkdir -p $@
 
+# Test build and run
 test: $(TEST_BIN)
-	$(TEST_BIN)
+	./$(TEST_BIN)
 
 $(TEST_BIN): $(TEST_SRC) $(OBJ) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 run: $(TARGET)
-	$(TARGET)
+	./$(TARGET)
 
 clean:
-	rm -rf $(BUILD_DIR)/*
+	rm -rf $(BUILD_DIR)
 
 rebuild: clean all
