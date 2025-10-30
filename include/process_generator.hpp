@@ -1,10 +1,10 @@
 #pragma once
 #include "config.hpp"
+#include "instruction.hpp"
 #include "scheduler.hpp"
 #include <atomic>
 #include <thread>
 #include <vector>
-#include "instruction.hpp"
 
 // May also be better as a Singleton as only one generator is needed
 class ProcessGenerator {
