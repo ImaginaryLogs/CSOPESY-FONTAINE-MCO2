@@ -10,6 +10,8 @@ struct Config {
   uint32_t min_ins = 1000;
   uint32_t max_ins = 2000;
   uint32_t delay_per_exec = 0;
+  // Maximum total instructions after FOR unrolling (0 = no limit)
+  uint32_t max_unrolled_instructions = 10000;
 };
 
 Config load_config(const std::string &path);
