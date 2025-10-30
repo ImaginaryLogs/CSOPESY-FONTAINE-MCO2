@@ -12,7 +12,13 @@
 // #define DEBUG_GENERATOR
 
 /**
- * Convert instruction type to string for debug output
+ * Convert InstructionType enum to human-readable string representation
+ *
+ * This helper function provides consistent string conversion for all
+ * instruction types, primarily used for debug output and logging.
+ *
+ * @param t The InstructionType to convert
+ * @return String representation of the instruction type
  */
 static std::string inst_type_to_string(InstructionType t) {
   switch (t) {
@@ -33,8 +39,20 @@ static std::string inst_type_to_string(InstructionType t) {
   }
 }
 
-// Human readable representation of an instruction (args only; nested FORs
-// abbreviated)
+/**
+ * Create a human-readable string representation of an Instruction
+ *
+ * Formats an Instruction object into a debug-friendly string showing the type
+ * and arguments. For FOR instructions, shows the number of nested instructions
+ * but does not expand them to keep output concise.
+ *
+ * Format:
+ * - Basic instructions: TYPE(arg1, arg2, ...)
+ * - FOR instructions: FOR(repeats){N nested}
+ *
+ * @param instr The Instruction to convert to string
+ * @return Human-readable representation of the instruction
+ */
 static std::string instr_to_string(const Instruction &instr) {
   std::ostringstream oss;
   oss << inst_type_to_string(instr.type);
@@ -53,7 +71,19 @@ static std::string instr_to_string(const Instruction &instr) {
   return oss.str();
 }
 
-// Utility: random integer in [min, max]
+/**
+ * Utility: random integer in [min, max]
+ *
+ * Notes:
+ * - Uses a thread-local PRNG (`std::mt19937`) seeded from `std::random_device`.
+ * - If `min > max` the values are swapped to avoid undefined behaviour.
+ * - This function is safe to call from multiple threads because the RNG is
+ *   thread-local.
+ *
+ * @param min Lower inclusive bound
+ * @param max Upper inclusive bound
+ * @return A uniformly distributed random integer in [min, max]
+ */
 static uint32_t rand_range(uint32_t min, uint32_t max) {
   // Guard: if min > max, swap to avoid UB
   if (min > max) {
@@ -66,9 +96,26 @@ static uint32_t rand_range(uint32_t min, uint32_t max) {
   return dist(rng);
 }
 
-// Utility: generate a random instruction
-// Supports nested FOR instructions up to a limited depth to avoid runaway
-// expansion when the scheduler unrolls FORs.
+/**
+ * Generate a random Instruction instance.
+ *
+ * The generator can produce any InstructionType including `FOR`. When a
+ * `FOR` instruction is generated it will include a repeat count in
+ * `args[0]` and a small `nested` vector of child instructions. To prevent
+ * runaway nesting the generator accepts a `depth` parameter and will avoid
+ * creating `FOR` when `depth >= FOR_MAX_NESTING`.
+ *
+ * Behaviour:
+ * - PRINT: args[0] = "Hello"
+ * - DECLARE: args = { "x", <value> }
+ * - ADD/SUBTRACT: args = { "x", <a>, <b> }
+ * - SLEEP: args = { <ticks> }
+ * - FOR: args = { <repeats> }, nested = small list of nested instructions
+ *
+ * @param depth Current recursion depth for nested FOR generation (0 =
+ * top-level)
+ * @return A randomly constructed Instruction
+ */
 static Instruction random_instruction(int depth = 0) {
   InstructionType types[] = {InstructionType::PRINT, InstructionType::DECLARE,
                              InstructionType::ADD,   InstructionType::SUBTRACT,
@@ -124,7 +171,21 @@ static Instruction random_instruction(int depth = 0) {
   return instr;
 }
 
-// Estimate unrolled size for a single instruction (handles nested FORs)
+/**
+ * Estimate unrolled size for a single instruction (handles nested FORs)
+ *
+ * This recursively inspects a top-level instruction and computes how many
+ * primitive instructions it will expand to once FOR loops are unrolled.
+ * For a non-FOR instruction this is 1. For a FOR instruction it is:
+ *   repeats * sum(estimate(nested_i))
+ *
+ * Edge cases:
+ * - Malformed repeat counts (non-numeric) are treated as 1.
+ * - Empty nested bodies result in 0 contribution.
+ *
+ * @param instr Instruction to estimate
+ * @return Estimated number of primitive instructions after unrolling
+ */
 static uint32_t estimate_unrolled_size_for_instr(const Instruction &instr) {
   if (instr.type != InstructionType::FOR) {
     return 1;
@@ -143,7 +204,12 @@ static uint32_t estimate_unrolled_size_for_instr(const Instruction &instr) {
   return repeats * nested_total;
 }
 
-// Estimate unrolled size for a vector of instructions
+/**
+ * Estimate unrolled size for a vector of instructions
+ *
+ * @param ins Vector of top-level instructions
+ * @return Total estimated number of primitive instructions after unrolling
+ */
 static uint32_t estimate_unrolled_size(const std::vector<Instruction> &ins) {
   uint32_t total = 0;
   for (const auto &i : ins)
@@ -151,7 +217,21 @@ static uint32_t estimate_unrolled_size(const std::vector<Instruction> &ins) {
   return total;
 }
 
-// Constructor
+/**
+ * Construct a new ProcessGenerator instance
+ *
+ * The ProcessGenerator creates processes with random instructions according to
+ * the provided configuration. It submits these processes to the scheduler at
+ * intervals defined by Config::batch_process_freq.
+ *
+ * Thread Safety:
+ * - Safe to construct from any thread
+ * - References to cfg and sched must remain valid for generator lifetime
+ *
+ * @param cfg Configuration controlling process generation (instruction counts,
+ *            budgets, timing)
+ * @param sched Scheduler that will receive generated processes
+ */
 ProcessGenerator::ProcessGenerator(const Config &cfg, Scheduler &sched)
     : cfg_(cfg), sched_(sched) {}
 
@@ -192,7 +272,18 @@ ProcessGenerator::generate_instructions(uint32_t target_top_level,
   return ins;
 }
 
-// Start thread loop
+/**
+ * Start the process generation thread
+ *
+ * Creates and starts a background thread that periodically generates new
+ * processes according to the configuration. If already running, this is a
+ * no-op.
+ *
+ * Thread Safety:
+ * - Safe to call from any thread
+ * - Uses atomic flag to prevent multiple starts
+ * - Must be paired with stop() to clean up resources
+ */
 void ProcessGenerator::start() {
   if (running_.load())
     return;
@@ -203,7 +294,18 @@ void ProcessGenerator::start() {
   thread_ = std::thread(&ProcessGenerator::loop, this);
 }
 
-// Stop generator
+/**
+ * Stop the process generation thread
+ *
+ * Signals the generator thread to stop and waits for it to complete. Safe to
+ * call multiple times. After stopping, the generator can be restarted with
+ * start().
+ *
+ * Thread Safety:
+ * - Safe to call from any thread
+ * - Uses atomic flag for thread-safe shutdown
+ * - Blocks until generator thread joins
+ */
 void ProcessGenerator::stop() {
   running_.store(false);
 #ifdef DEBUG_GENERATOR
@@ -213,7 +315,23 @@ void ProcessGenerator::stop() {
     thread_.join();
 }
 
-// Internal loop
+/**
+ * Main generator thread loop
+ *
+ * This is the core process generation routine that runs in a background thread.
+ * It periodically:
+ * 1. Sleeps for batch_process_freq seconds
+ * 2. Generates a random set of instructions within budget
+ * 3. Creates a new Process with those instructions
+ * 4. Submits the Process to the scheduler
+ *
+ * Thread Safety:
+ * - Runs in dedicated background thread
+ * - Uses atomic flag for shutdown coordination
+ * - Uses atomic counter for process ID generation
+ *
+ * Note: This is an internal method called by start(). Do not call directly.
+ */
 void ProcessGenerator::loop() {
   using namespace std::chrono_literals;
   while (running_.load()) {
