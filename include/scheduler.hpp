@@ -32,8 +32,8 @@ private:
   std::atomic<uint32_t> tick_{0};
   std::thread sched_thread_;
   std::deque<std::shared_ptr<Process>> ready_queue_;
-  std::vector<std::shared_ptr<Process>> running_; // indexed by cpu id
-  std::vector<std::shared_ptr<Process>> finished_;
+  std::vector<std::shared_ptr<Process>> running_processes_; // indexed by cpu id
+  std::vector<std::shared_ptr<Process>> finished_processes_;
   std::mutex mtx_;
   std::condition_variable cv_;
   // metrics
