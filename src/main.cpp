@@ -2,6 +2,6 @@
 
 int main() {
   CLI app;
-  int result = app.run();
-  return result;
+  app.run();
+  return 0;
 }
