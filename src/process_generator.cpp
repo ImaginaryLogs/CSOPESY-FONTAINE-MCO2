@@ -86,9 +86,59 @@ static Instruction random_instruction(int depth = 0) {
   return instr;
 }
 
+// Estimate unrolled size for a single instruction (handles nested FORs)
+static uint32_t estimate_unrolled_size_for_instr(const Instruction &instr) {
+  if (instr.type != InstructionType::FOR) {
+    return 1;
+  }
+  uint32_t repeats = 1;
+  if (!instr.args.empty()) {
+    try {
+      repeats = static_cast<uint32_t>(std::stoul(instr.args[0]));
+    } catch (...) {
+      repeats = 1;
+    }
+  }
+  uint32_t nested_total = 0;
+  for (const auto &n : instr.nested)
+    nested_total += estimate_unrolled_size_for_instr(n);
+  return repeats * nested_total;
+}
+
+// Estimate unrolled size for a vector of instructions
+static uint32_t estimate_unrolled_size(const std::vector<Instruction> &ins) {
+  uint32_t total = 0;
+  for (const auto &i : ins)
+    total += estimate_unrolled_size_for_instr(i);
+  return total;
+}
+
 // Constructor
 ProcessGenerator::ProcessGenerator(const Config &cfg, Scheduler &sched)
     : cfg_(cfg), sched_(sched) {}
+
+// Public helper used by loop and tests: generate up to target_top_level
+// top-level instructions while respecting the configured budget. Returns
+// the generated instructions and writes the estimated unrolled size to
+// estimated_size.
+std::vector<Instruction>
+ProcessGenerator::generate_instructions(uint32_t target_top_level,
+                                        uint32_t &estimated_size) {
+  estimated_size = 0;
+  std::vector<Instruction> ins;
+  ins.reserve(target_top_level);
+  for (uint32_t i = 0; i < target_top_level; ++i) {
+    Instruction instr = random_instruction(0);
+    uint32_t instr_size = estimate_unrolled_size_for_instr(instr);
+    if (cfg_.max_unrolled_instructions > 0 &&
+        estimated_size + instr_size > cfg_.max_unrolled_instructions) {
+      break;
+    }
+    estimated_size += instr_size;
+    ins.push_back(std::move(instr));
+  }
+  return ins;
+}
 
 // Start thread loop
 void ProcessGenerator::start() {
@@ -112,12 +162,22 @@ void ProcessGenerator::loop() {
     // sleep between process generations
     std::this_thread::sleep_for(std::chrono::seconds(cfg_.batch_process_freq));
 
-    // Generate process
+    // Generate process instructions while respecting configured budget
     uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
+    uint32_t estimated_size = 0;
     std::vector<Instruction> ins;
     ins.reserve(num_instructions);
-    for (uint32_t i = 0; i < num_instructions; ++i)
-      ins.push_back(random_instruction(0));
+    for (uint32_t i = 0; i < num_instructions; ++i) {
+      Instruction instr = random_instruction(0);
+      uint32_t instr_size = estimate_unrolled_size_for_instr(instr);
+      if (cfg_.max_unrolled_instructions > 0 &&
+          estimated_size + instr_size > cfg_.max_unrolled_instructions) {
+        // exceeding budget: stop adding more top-level instructions
+        break;
+      }
+      estimated_size += instr_size;
+      ins.push_back(std::move(instr));
+    }
 
     // Assign id first (post-increment) and use the same id for the name to
     // avoid off-by-one mismatch between id and name.
