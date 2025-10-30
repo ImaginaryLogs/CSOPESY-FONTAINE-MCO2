@@ -53,15 +53,6 @@ static std::string instr_to_string(const Instruction &instr) {
   return oss.str();
 }
 
-// TODO:
-// - Make next_id_ atomic or protected explicitly.
-// - Add DEBUG_GENERATOR logging to record created process id/name and
-// instruction counts (useful for debugging expansion).
-// - Modify generator to control post-unroll instruction budget rather than
-// top-level count.
-// - Add a small unit test / smoke harness to generate a process, unroll it, and
-// assert the unrolled size is within a limit.
-
 // Utility: random integer in [min, max]
 static uint32_t rand_range(uint32_t min, uint32_t max) {
   // Guard: if min > max, swap to avoid UB
