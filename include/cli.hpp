@@ -9,6 +9,7 @@
 class CLI {
 public:
   CLI();
+  ~CLI();
   int run(); // main loop; returns exit code
 private:
   void handle_command(const std::string &cmd);
