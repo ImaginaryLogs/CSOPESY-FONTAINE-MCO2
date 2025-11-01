@@ -12,3 +12,8 @@ struct Instruction {
   // vector
   std::vector<Instruction> nested;
 };
+
+// Maximum allowed FOR nesting depth (language/runtime spec).
+// Use this constant across generator and process unrolling to ensure
+// consistent behavior and to avoid hardcoded duplicated values.
+constexpr int FOR_MAX_NESTING = 3;

@@ -1,37 +1,48 @@
 CXX := g++
 CXXFLAGS := -std=c++17 -Wall -pthread -O2
+INCLUDE := -I include
 
 SRC_DIR := src
 BUILD_DIR := build
-BIN_DIR := bin
-TARGET := $(BIN_DIR)/csopesy.exe
+TARGET := $(BUILD_DIR)/app
 
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
-.PHONY: all run clean rebuild
+# test target name (no .cpp extension)
+TEST := test_process_generator
+TEST_SRC := tests/$(TEST).cpp
+TEST_BIN := $(BUILD_DIR)/$(TEST)
+
+.PHONY: all run test clean rebuild
 
 all: $(TARGET)
 
-$(TARGET): $(OBJ) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+# Main app
+$(TARGET): $(OBJ) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
-# compile .cpp -> .o in build/
+# Object build rule
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
-# alternate rule to allow producing .obj in build/ if desired
-$(BUILD_DIR)/%.obj: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# ensure dirs exist
-$(BUILD_DIR) $(BIN_DIR):
+# Ensure build directory exists
+$(BUILD_DIR):
 	mkdir -p $@
+
+# Test build and run
+test: $(TEST_BIN)
+	./$(TEST_BIN)
+
+$(TEST_BIN): $(TEST_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) \
+		$(TEST_SRC) $(filter-out $(SRC_DIR)/main.cpp,$(wildcard $(SRC_DIR)/*.cpp)) \
+		-o $@
 
 run: $(TARGET)
 	./$(TARGET)
 
 clean:
-	rm -rf $(BUILD_DIR)/* $(BIN_DIR)/*
+	rm -rf $(BUILD_DIR)
 
 rebuild: clean all

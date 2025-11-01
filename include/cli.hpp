@@ -1,7 +1,7 @@
 #pragma once
 #include "config.hpp"
 #include "cpu_worker.hpp"
-#include "generator.hpp"
+#include "process_generator.hpp"
 #include "reporter.hpp"
 #include "scheduler.hpp"
 #include "screen.hpp"
@@ -9,6 +9,7 @@
 class CLI {
 public:
   CLI();
+  ~CLI();
   int run(); // main loop; returns exit code
 private:
   void handle_command(const std::string &cmd);

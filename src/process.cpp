@@ -78,8 +78,7 @@ static bool is_number(const std::string &s) {
  *      - For each nested instruction:
  *        - If nested FOR, recurse with depth+1
  *        - Otherwise append instruction
- * 3. Depth limit of 10 prevents infinite recursion
- *    (though spec mentions max depth of 3)
+ * 3. Depth limit defined by FOR_MAX_NESTING (see `include/instruction.hpp`)
  *
  * Example:
  *   FOR(2)
@@ -107,7 +106,7 @@ static void unroll_instruction(const Instruction &instr,
     return;
   }
 
-  if (depth >= 10) { // safety cap, though spec says up to 3
+  if (depth >= FOR_MAX_NESTING) { // safety cap from spec (FOR_MAX_NESTING)
     // append nested once to avoid infinite loops
     for (const auto &inner : instr.nested)
       out.push_back(inner);
