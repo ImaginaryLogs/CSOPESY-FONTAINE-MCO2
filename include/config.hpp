@@ -2,9 +2,15 @@
 #include <cstdint>
 #include <string>
 
+
+enum Scheduling_Algorithm {
+  RR,
+  FCFS
+};
+
 struct Config {
   uint32_t num_cpu = 4;
-  std::string scheduler = "rr"; // "rr" or "fcfs"
+  Scheduling_Algorithm scheduler = RR; // "rr" or "fcfs"
   uint32_t quantum_cycles = 5;
   uint32_t batch_process_freq = 1;
   uint32_t min_ins = 1000;

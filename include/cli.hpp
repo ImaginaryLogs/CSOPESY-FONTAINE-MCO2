@@ -6,6 +6,8 @@
 #include "scheduler.hpp"
 #include "screen.hpp"
 
+#ifndef MY_HEADER_FILE_H
+#define MY_HEADER_FILE_H
 class CLI {
 public:
   CLI();
@@ -21,3 +23,5 @@ private:
   ProcessGenerator *generator_{nullptr};
   Reporter *reporter_{nullptr};
 };
+
+#endif 

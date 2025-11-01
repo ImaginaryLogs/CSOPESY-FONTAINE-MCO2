@@ -13,6 +13,22 @@ Scheduler::~Scheduler() {
 void Scheduler::start() {
   if (running_.load())
     return;
+
+    this->cfg_ = initial_cfg;
+  this->sched_running_ = false;
+  this->tick_ = 0;
+
+  InitializeQueues();
+  InitializeVectors();
+
+  this->busy_ticks_per_cpu_ = std::vector<uint64_t>();
+  this->cpu_quantum_remaining_ = std::unordered_map<uint32_t, uint32_t>();
+
+  for (uint32_t i = 0; i < cfg_.num_cpu; i++) {
+    busy_ticks_per_cpu_.push_back(0);
+    cpu_quantum_remaining_[i] = 0;
+  }
+  
   running_.store(true);
   sched_thread_ = std::thread(&Scheduler::tick_loop, this);
 }

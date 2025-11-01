@@ -1,4 +1,5 @@
-#include "../include/cli.hpp"
+#include "cli.cpp"
+#include "screen.cpp"
 
 int main() {
   CLI app;

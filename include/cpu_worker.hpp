@@ -2,6 +2,7 @@
 #include "scheduler.hpp"
 #include <thread>
 
+
 class CPUWorker {
 public:
   CPUWorker(uint32_t id, Scheduler &sched);
@@ -15,4 +16,5 @@ private:
   Scheduler &sched_;
   std::thread thread_;
   std::atomic<bool> running_{false};
+
 };
