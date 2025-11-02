@@ -5,7 +5,18 @@
 #include <unordered_map>
 #include <vector>
 
-enum class ProcessState { NEW, READY, RUNNING, WAITING, FINISHED, BLOCKED, SWAPPED_OUT };
+enum class ProcessState { 
+  // Long Term
+  NEW, 
+  // Medium Term
+  WAITING,
+  BLOCKED_PAGE_FAULT, 
+  SWAPPED_OUT,
+  FINISHED,
+  // Short Term
+  READY, 
+  RUNNING,
+};
 
 struct ProcessMetrics {
   uint32_t created_tick{0};
@@ -27,7 +38,7 @@ public:
   uint32_t priority{0};         // process priority
   uint32_t ticks_waited{0};     // for aging or fairness
   uint32_t last_active_tick{0}; // for LRU / victim selection
-  uint32_t cpu_id{256};          // which CPU last ran it
+  uint32_t cpu_id{256};         // which CPU last ran it
 
   // === Program Related Members ===
   uint32_t pc{0}; // program counter

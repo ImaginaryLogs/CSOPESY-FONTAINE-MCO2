@@ -66,5 +66,7 @@
         "xstring": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp"
-    }
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/g++",
+    "C_Cpp.default.compilerArgs": ["-std=c++20"],
 }

@@ -9,9 +9,18 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include "util.hpp"
+#include <barrier>
 
 // Note: May be better to implement as a Singleton as we only want one Scheduler
 // Check out `docs/scheduler.md` for design notes.
+
+struct ProcessComparator {
+  bool operator()(const std::shared_ptr<Process> &a,
+                  const std::shared_ptr<Process> &b) const;
+};
+
+
 class Scheduler {
 public:
   // === LifeCycle ===
@@ -51,31 +60,33 @@ private:
   void tick_loop();
   void short_term_dispatch();     // per-CPU RR/FCFS logic
   void medium_term_check();       // page faults / swapping
-  void long_term_admission();     // job → ready
+  void long_term_admission();     // job -> ready
 
   // === Internal Scheduler State === 
   Config cfg_;
   std::thread sched_thread_;
   std::atomic<uint32_t> tick_{0};
   std::atomic<bool> sched_running_{false};
+  std::mutex shortTermMtx_;
+  std::mutex schedulerMtx_;
+  std::unique_ptr<std::barrier<>> tickSyncBarrier_;
   
   // === Queues ===
-  std::deque<std::shared_ptr<Process>> job_queue_;      // new processes, for long-term scheduler
-  std::deque<std::shared_ptr<Process>> ready_queue_;    // ready process, for short-term scheduler
-  std::deque<std::shared_ptr<Process>> blocked_queue_;  // sleeping or page-faulted, medium-term scheduler
-  std::deque<std::shared_ptr<Process>> swapped_queue_;  // swapped to backing store, medium-term scheduler
+  Channel<std::shared_ptr<Process>> job_queue_;         // new processes, for long-term scheduler
+  DynamicVictimChannel ready_queue_;                    // ready process, for short-term scheduler
+  Channel<std::shared_ptr<Process>> blocked_queue_;     // sleeping or page-faulted, medium-term scheduler
+  Channel<std::shared_ptr<Process>> swapped_queue_;     // swapped to backing store, medium-term scheduler
 
   // === CPU State ===
-  std::vector<std::shared_ptr<Process>> running_; // running processes, indexed by cpu id
-  std::vector<std::shared_ptr<Process>> finished_; // finished processes, indexed by cpu id
-  
+  std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
+  std::vector<std::shared_ptr<Process>> finished_;      // finished processes, indexed by cpu id
   
   // === Scheduler Metrics ===
-  std::vector<uint64_t> busy_ticks_per_cpu_;
-  // RR bookkeeping
-  std::unordered_map<uint32_t, uint32_t> cpu_quantum_remaining_;
+  std::vector<uint64_t> busy_ticks_per_cpu_; // Busy ticks
+  std::unordered_map<uint32_t, uint32_t> cpu_quantum_remaining_; // RR bookkeeping
+
 
   // === Utilities ===
-  void InitializeQueues();
-  void InitializeVectors();
+  void initialize_vectors();
+  void cleanup_finished_processes(uint32_t cpu_id);
 };
