@@ -31,7 +31,7 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 # Test build and run
-test: $(TEST_BIN)
+test: $(TEST_BIN) $(SRC_DIR)
 	./$(TEST_BIN)
 
 $(TEST_BIN): $(TEST_SRC) | $(BUILD_DIR)

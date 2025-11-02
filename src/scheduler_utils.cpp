@@ -1,6 +1,7 @@
 #include "../include/scheduler.hpp"
 #include "../include/process.hpp"
 #include <sstream>
+#include <iostream>
 
 // This files just contains Scheduler's Utility functions
 
@@ -8,38 +9,31 @@
 void Scheduler::initialize_vectors() {
   this->running_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
   this->finished_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
-  this->busy_ticks_per_cpu_ = std::vector<uint64_t>();
-  this->cpu_quantum_remaining_ = std::vector<uint32_t>();
+  this->busy_ticks_per_cpu_ = std::vector<uint64_t>(cfg_.num_cpu, 0);
+  this->cpu_quantum_remaining_ = std::vector<uint32_t>(cfg_.num_cpu, cfg_.quantum_cycles - 1);
 }
 
 // === SHORT TERM SCHEDULER ALGORITHM IMPLEMENTATION ===
 bool ProcessComparer::operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const {
   // Default comparison (by process ID)
-  return a->id() < b->id();
+  std::cout << "Default Algo";
+  return a->id() > b->id();
 }
 
-struct FCFSAlgo : ProcessComparer {
-  bool operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const {
-    return a->last_active_tick == b->last_active_tick      // are both same arrival time?
-            ? a->id() < b->id()                             // yes, tie-breaker by ID  
-            : a->last_active_tick < b->last_active_tick;    // no, earlier arrival first;
-  }
+ProcessCmpFn fcfs_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
+  if (a->last_active_tick == b->last_active_tick) return a->id() < b->id();
+  return a->last_active_tick < b->last_active_tick;
 };
 
-struct PriorityAlgo : ProcessComparer {
-  bool operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const {
-    return a->priority == b->priority // Are both same priority?
-      ? a->id() < b->id()             // yes, tie-breaker by ID
-      : a->priority > b->priority;    // no, Higher priority value means higher priority
-  }
+ProcessCmpFn rr_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
+  if (a->last_active_tick == b->last_active_tick) return a->id() > b->id();
+  return a->last_active_tick < b->last_active_tick;
 };
 
-struct RRAlgo : ProcessComparer {
-  bool operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const {
-    return a->last_active_tick == b->last_active_tick       // are both same arrival time?
-            ? a->id() < b->id()                             // yes, tie-breaker by ID  
-            : a->last_active_tick < b->last_active_tick;    // no, earlier arrival first;
-  }
+ProcessCmpFn prio_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
+
+  if (a->priority == b->priority) return a->id() < b->id();
+  return a->priority > b->priority;
 };
 
 // === DynamicVictimChannel Implementation ===
@@ -54,20 +48,22 @@ void DynamicVictimChannel::reformatQueue() {
   std::lock_guard<std::mutex> lock(messageMtx_);
   switch (policy_) {
     case RR:
-      comparator_ = RRAlgo();
+      comparator_ = rr_cmp;
       break;
     case FCFS:
-      comparator_ = FCFSAlgo();
+      comparator_ = fcfs_cmp;
       break;
     case PRIORITY:
-      comparator_ = PriorityAlgo();
+      comparator_ = prio_cmp;
+      break;
     default:
-      comparator_ = ProcessComparer(); // Default comparer
+      comparator_ = fcfs_cmp; // Default comparer
       break;  
   }
-  std::multiset<std::shared_ptr<Process>, ProcessComparer> newQueue(comparator_);
+  std::multiset<std::shared_ptr<Process>, ProcessCmpFn> newQueue(comparator_);
   newQueue.insert(victimQ_.begin(), victimQ_.end());
   victimQ_.swap(newQueue);
+  this->comparator_ = comparator_;
 }
 
 
@@ -82,7 +78,7 @@ std::string DynamicVictimChannel::snapshot() {
 
   ss << "DVC Snapshot: " << victimQ_.size() << " processes\n";
   for (const auto &proc : victimQ_) {
-      ss << "PID=" << proc->id() << ", Name=" << proc->name() << ", " << "\n";
+      ss << "PID=" << proc->id() << ", Name=" << proc->name() << ", " << " LA=" << proc->last_active_tick << "\n";
   }
   return ss.str();
 }

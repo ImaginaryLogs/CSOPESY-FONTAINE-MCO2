@@ -17,6 +17,10 @@
 // Note: May be better to implement as a Singleton as we only want one Scheduler
 // Check out `docs/scheduler.md` for design notes.
 
+using ProcessPtr = std::shared_ptr<Process>;
+using ProcessCmpFn = std::function<bool(const ProcessPtr&, const ProcessPtr&)>;
+
+
 struct ProcessComparator {
   bool operator()(const std::shared_ptr<Process> &a,
                   const std::shared_ptr<Process> &b) const;
@@ -58,18 +62,14 @@ public:
   void resume();
   bool is_paused() const;
   void tick_barrier_sync();
+  void stop_barrier_sync();
 
   uint32_t get_cpu_count() const;
   uint32_t get_scheduler_tick_delay() const;
-  
-protected:
-  
+  std::string get_sched_snapshots();
+  void setSchedulingPolicy(SchedulingPolicy policy_);
 
 private:
-  // === Singletons ===
-  static Scheduler *SingletonInstance_;
-  static std::mutex SingletonMtx_;
-
   // === Scheduler Internal Methods ===
   void tick_loop();
   void preemption_check();        // preemption logic
@@ -87,6 +87,7 @@ private:
   std::mutex short_term_mtx_;
   std::mutex scheduler_mtx_;
   std::unique_ptr<std::barrier<>> tick_sync_barrier_;
+  Channel<std::string> log_queue;
   
   // === Queues ===
   Channel<std::shared_ptr<Process>> job_queue_;         // new processes, for long-term scheduler

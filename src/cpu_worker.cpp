@@ -23,6 +23,7 @@ void CPUWorker::stop() {
   std::cout << "CPUWorker " << id_ << " stopping.\n";
   #endif
   running_.store(false); 
+  sched_.stop_barrier_sync();
 }
 
 
@@ -43,11 +44,15 @@ void CPUWorker::loop() {
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     #if DEBUG_CPU_WORKER
+    std::cout<< "CPUWorker " << id_ << " waiting for pre-emption to execute.\n";
+    #endif
+    sched_.tick_barrier_sync();
+    #if DEBUG_CPU_WORKER
     std::cout << "CPUWorker " << id_ << " checking for process to execute.\n";
     #endif
-
+    
     auto process = sched_.dispatch_to_cpu(this->id_);
-    uint32_t consumed_ticks = 1;
+    uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
 
     if (!process) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -56,6 +61,8 @@ void CPUWorker::loop() {
       #endif
       sched_.tick_barrier_sync();
       continue;
+    } else {
+      std::cout << "CPUWorker " << id_ << " found process ID=" << process->id() << " with PR=" << process->priority << ", LA=" << process->last_active_tick << "\n";
     }
     
     bool finished = process->execute_tick(sched_.current_tick(), sched_.get_scheduler_tick_delay(), consumed_ticks);

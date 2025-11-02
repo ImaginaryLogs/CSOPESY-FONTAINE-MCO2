@@ -15,12 +15,12 @@ Scheduler::Scheduler(const Config &cfg)
     : cfg_(cfg),
       busy_ticks_per_cpu_(cfg.num_cpu),
       job_queue_(Channel<std::shared_ptr<Process>>()),
-      ready_queue_(SchedulingPolicy::FCFS),
+      ready_queue_(cfg.scheduler),
       blocked_queue_(Channel<std::shared_ptr<Process>>()),
       swapped_queue_(Channel<std::shared_ptr<Process>>())
 {
   initialize_vectors();
-  this->tick_.store(0);
+  this->tick_.store(1);
 }
 
 Scheduler::~Scheduler()
@@ -66,12 +66,12 @@ void Scheduler::stop()
   {
     worker->stop();
   }
+
   if (tick_sync_barrier_)
     tick_sync_barrier_->arrive_and_drop();
 
   for (auto &worker : cpu_workers_)
   {
-    
     worker->join();
   }
 
@@ -91,9 +91,14 @@ void Scheduler::submit_process(std::shared_ptr<Process> p)
 
 void Scheduler::long_term_admission()
 {
-  auto p = this->job_queue_.receive();
-  p->set_state(ProcessState::READY);
-  this->ready_queue_.send(p);
+  // #if DEBUG_SCHEDULER
+  // std::cout << "Long-term Admission" << "\n";
+  // #endif
+  while (!this->job_queue_.isEmpty()){
+    auto p = this->job_queue_.receive();
+    p->set_state(ProcessState::READY);
+    this->ready_queue_.send(p);
+  }
 }
 
 // === Paging & Swapping (Medium-term scheduler) ===
@@ -103,10 +108,14 @@ void Scheduler::long_term_admission()
 std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
 {
   std::lock_guard<std::mutex> lock(short_term_mtx_);
-  if (this->ready_queue_.isEmpty())
+  if (this->ready_queue_.isEmpty() && !running_[cpu_id])
   {
     return nullptr;
+  } else if (running_[cpu_id])
+  {
+    return running_[cpu_id];
   }
+
   // Assign Current Process to Scheduler Internal States
   auto p = this->ready_queue_.receiveNext();
   p->set_state(ProcessState::RUNNING);
@@ -124,6 +133,7 @@ void Scheduler::release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p,
   if (finished)
   {
     p->set_state(ProcessState::FINISHED);
+    running_[cpu_id] = nullptr;
     finished_[cpu_id] = p;
   }
   else if (yielded)
@@ -156,7 +166,10 @@ void Scheduler::cleanup_finished_processes(uint32_t cpu_id)
 }
 
 void Scheduler::short_term_dispatch()
-{
+{ 
+  #if DEBUG_SCHEDULER
+    std::cout << "Short-term Dispatch\n";
+  #endif
   for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id)
   {
     if (finished_[cpu_id])
@@ -164,8 +177,11 @@ void Scheduler::short_term_dispatch()
       finished_[cpu_id] = nullptr;
       running_[cpu_id] = nullptr;
     }
+
+
     if (!running_[cpu_id])
       dispatch_to_cpu(cpu_id);
+    
   }
 }
 
@@ -174,21 +190,43 @@ void Scheduler::preemption_check()
   switch (this->cfg_.scheduler)
   {
   case RR:
+    #if DEBUG_SCHEDULER
+      std::cout << "Preemption Check" << "\n";
+    #endif
     for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id)
     {
-      if (!running_[cpu_id])
+      
+      if (!running_[cpu_id]) {
+        std::cout << "  CPU ID: " << cpu_id << " IDLE\n";
         continue;
-
+      }
+      #if DEBUG_SCHEDULER
+      std::cout << "  CPU ID: " << cpu_id << ", PID=" << running_[cpu_id]->id() << " RR=" << cpu_quantum_remaining_[cpu_id] << " LA=" << running_[cpu_id]->last_active_tick << "\n";
+      #endif
       if (cpu_quantum_remaining_[cpu_id] > 0)
       {
         cpu_quantum_remaining_[cpu_id]--;
         continue;
       }
+      if (finished_[cpu_id])
+        continue;
 
+      #if DEBUG_SCHEDULER
+      std::cout << "  Performing preemption for CPU ID: " << cpu_id << "\n";
+      std::cout << Scheduler::snapshot();
+      #endif
       // Time to preempt
       release_cpu(cpu_id, running_[cpu_id], false, true);
+      #if DEBUG_SCHEDULER
+      std::cout << "  Performing preemption for CPU ID: " << cpu_id << "\n";
+      std::cout << Scheduler::snapshot();
+      #endif
       dispatch_to_cpu(cpu_id);
-      cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles;
+      #if DEBUG_SCHEDULER
+      std::cout << "  Performing preemption for CPU ID: " << cpu_id << "\n";
+      std::cout << Scheduler::snapshot();
+      #endif
+      cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
     }
     break;
   case FCFS:
@@ -211,42 +249,52 @@ void Scheduler::tick_loop()
       pause_cv_.wait(lock, [this]()
                      { return !paused_.load(); });
     }
-#if DEBUG_SCHEDULER
+
+    #if DEBUG_SCHEDULER
     std::cout << "Scheduler Tick " << this->tick_.load() << " starting. \n";
-#endif
+    #endif
 
     {
       std::lock_guard<std::mutex> lock(scheduler_mtx_);
+
       // === 1. Preemption ===
       Scheduler::preemption_check();
+      
+      Scheduler::tick_barrier_sync();
 
       // === 2. Long-term scheduling: admit new jobs ===
       if (!this->job_queue_.isEmpty())
-      {
         Scheduler::long_term_admission();
-      }
+      
 
       // === 3. Middle-term scheduling: handle page faults, swapping ===
       // empty for now
 
       // === 4. Short-term scheduling: dispatch to CPUs ===
       if (!this->ready_queue_.isEmpty())
-      {
         Scheduler::short_term_dispatch();
+      
+
+      #if DEBUG_SCHEDULER
+        std::cout << "Scheduler Tick " << this->tick_.load() << " completed.\n";
+      #endif
       }
-
-#if DEBUG_SCHEDULER
-      std::cout << "Scheduler Tick " << this->tick_.load() << " completed.\n";
-#endif
-
+      if (this->tick_ % this->cfg_.snapshot_cooldown == 0)
+        log_queue.send(Scheduler::snapshot());
+      {
+      std::lock_guard<std::mutex> lock(scheduler_mtx_);
+        
       Scheduler::tick_barrier_sync();
 
       // === 5. March forward the global tick ===
       this->tick_.fetch_add(1);
 
-#if DEBUG_SCHEDULER
+
+
+    #if DEBUG_SCHEDULER
       std::cout << "Scheduler Tick advanced to " << this->tick_.load() << ".\n";
-#endif
+    #endif
+      
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
@@ -256,21 +304,18 @@ void Scheduler::tick_loop()
 std::string Scheduler::snapshot()
 {
   std::stringstream ss;
-  std::lock_guard<std::mutex> lock(scheduler_mtx_);
   ss << "=== Scheduler Snapshot ===\n";
   ss << "Tick: " << tick_.load() << "\n";
-  ss << "Paused: " << (paused_.load() ? "true" : "false") << "\n\n";
-
-  // --- CPU States ---
-  ss << "[CPU States]\n";
-  for (size_t i = 0; i < running_.size(); ++i)
+  ss << "Paused: " << (paused_.load() ? "true" : "false") << "\n";
+  // --- Job Queue ---
+  ss << "[Job Queue]\n";
+  if (job_queue_.isEmpty())
   {
-    auto &proc = running_[i];
-    if (proc)
-      ss << "  CPU " << i << ": PID=" << proc->id()
-         << " (" << proc->get_state_string() << ")\n";
-    else
-      ss << "  CPU " << i << ": IDLE\n";
+    ss << "  (empty)\n";
+  }
+  else
+  {
+    ss << job_queue_.snapshot();
   }
 
   // --- Ready Queue ---
@@ -282,6 +327,21 @@ std::string Scheduler::snapshot()
   else
   {
     ss << ready_queue_.snapshot();
+  }
+
+  // --- CPU States ---
+  ss << "\n[CPU States]\n";
+  for (size_t i = 0; i < running_.size(); ++i)
+  {
+    auto &proc = running_[i];
+    if (proc)
+      ss << "  CPU " << i 
+         << ": PID=" << proc->id()
+         << "  RR=" << cpu_quantum_remaining_[i]
+         << " LA=" << proc->last_active_tick
+         << " (" << proc->get_state_string() << ")\n";
+    else
+      ss << "  CPU " << i << ": IDLE\n";
   }
 
   // --- Finished ---
@@ -304,10 +364,18 @@ std::string Scheduler::snapshot()
   return ss.str();
 }
 
+void Scheduler::stop_barrier_sync()
+{
+  this->tick_sync_barrier_->arrive_and_drop();
+}
+
 void Scheduler::pause()
 {
   std::lock_guard<std::mutex> lock(scheduler_mtx_);
   paused_.store(true);
+  #if DEBUG_SCHEDULER
+  std::cout <<"Paused.\n";
+  #endif
 }
 
 void Scheduler::resume()
@@ -325,3 +393,14 @@ bool Scheduler::is_paused() const
 }
 
 uint32_t Scheduler::current_tick() const { return tick_.load(); }
+
+
+std::string Scheduler::get_sched_snapshots(){
+  auto snapshots = this->log_queue.snapshot();
+  this->log_queue.empty();
+  return snapshots;
+}
+
+void Scheduler::setSchedulingPolicy(SchedulingPolicy policy_){
+  this->ready_queue_.setPolicy(policy_);
+}

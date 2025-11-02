@@ -34,12 +34,38 @@ bool Channel<T>::isEmpty() {
 }
 
 template<typename T>
-std::string Channel<T>::snapshot() {
+void Channel<T>::empty(){
+  std::lock_guard<std::mutex> lock(messageMtx_);
+  q_.empty();
+  return;
+}
+
+template<>
+inline std::string Channel<std::string>::snapshot(){
   std::lock_guard<std::mutex> lock(messageMtx_);
   std::ostringstream oss;
-  oss << "Channel Snapshot: " << q_.size() << " messages\n";
-  for (const auto &msg : q_) {
-      oss << msg << "\n"; // Assumes T has operator<< overloaded
+  for (const auto &msg : q_){
+    oss << msg;
   }
   return oss.str();
+}
+
+template<>
+inline std::string Channel<std::shared_ptr<Process>>::snapshot() {
+    std::lock_guard<std::mutex> lock(messageMtx_);
+    std::ostringstream oss;
+    oss << "Channel Snapshot: " << q_.size() << " messages\n";
+    for (const auto &msg : q_) {
+        if (msg) {
+            oss << "  ID: " << msg->id()
+                << ", PRIO: " << msg->priority
+                << ", PC: " << msg->pc
+                << ", STATE: " << msg->get_state_string()
+                << ", NAME: " << msg->name()
+                << "\n";
+        } else {
+            oss << "nullptr\n";
+        }
+    }
+    return oss.str();
 }

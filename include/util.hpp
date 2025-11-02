@@ -2,11 +2,15 @@
 #include <cstdint>
 #include <string>
 #include <set>
+#include <functional>
 #include "config.hpp"
 #include "process.hpp"
 
 uint16_t clamp_uint16(int64_t v);
 std::string now_iso();
+
+using ProcessPtr = std::shared_ptr<Process>;
+using ProcessCmpFn = std::function<bool(const ProcessPtr&, const ProcessPtr&)>;
 
 // Thread Safe Queues (or channels in go-lang) are a VERY common data structure in schedulers.
 // They often require synchronization for thread safety.
@@ -21,7 +25,8 @@ class Channel {
 
     bool isEmpty();
     std::string snapshot();
-    
+    void empty();
+
   protected:
     std::deque<T> q_; // dequeue for future implementation
 
@@ -29,6 +34,33 @@ class Channel {
     std::mutex messageMtx_;
     std::condition_variable messageCv_;
 };
+
+
+
+template<typename T>
+class BufferedChannel {
+  public:
+    void send(const T& message);
+    
+    T receive();
+
+    bool isEmpty();
+    std::string snapshot();
+    void setCapacity();
+    void setOverwrite();
+
+  protected:
+    std::deque<T> q_; // dequeue for future implementation
+
+  private:
+    std::mutex messageMtx_;
+    std::condition_variable messageCv_;
+    bool has_overwrite_;
+    size_t cap;
+};
+
+
+
 
 struct ProcessComparer {
   bool operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const;
@@ -56,11 +88,11 @@ class DynamicVictimChannel {
     std::string snapshot();
 
   protected:
-    std::multiset<std::shared_ptr<Process>, ProcessComparer> victimQ_;
+    std::multiset<std::shared_ptr<Process>, ProcessCmpFn> victimQ_;
   
   private:
     SchedulingPolicy policy_;
-    ProcessComparer comparator_;
+    ProcessCmpFn comparator_;
     std::mutex messageMtx_;
     std::condition_variable messageCv_;
 };
