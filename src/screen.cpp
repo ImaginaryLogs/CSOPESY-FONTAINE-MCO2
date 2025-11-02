@@ -1,5 +1,11 @@
 #include "../include/screen.hpp"
 
+/**
+ * NOTE:
+ * This is just a skeleton that CJ created to get things going.
+ * Feel free to add/remove/revise anything.
+ */
+
 ScreenManager::ScreenManager() {}
 
 bool ScreenManager::create_screen(const std::string &name,

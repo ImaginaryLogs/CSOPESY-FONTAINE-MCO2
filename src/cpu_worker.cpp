@@ -1,5 +1,11 @@
 #include "../include/cpu_worker.hpp"
 
+/**
+ * NOTE:
+ * This is just a skeleton that CJ created to get things going.
+ * Feel free to add/remove/revise anything.
+ */
+
 CPUWorker::CPUWorker(uint32_t id, Scheduler &sched) : id_(id), sched_(sched) {}
 
 void CPUWorker::start() {

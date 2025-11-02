@@ -1,5 +1,11 @@
 #include "../include/cli.hpp"
 
+/**
+ * NOTE:
+ * This is just a skeleton that CJ created to get things going.
+ * Feel free to add/remove/revise anything.
+ */
+
 CLI::CLI() {
   // Initialize core components
   scheduler_ = new Scheduler(cfg_);

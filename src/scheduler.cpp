@@ -1,5 +1,11 @@
 #include "../include/scheduler.hpp"
 
+/**
+ * NOTE:
+ * This is just a skeleton that CJ created to get things going.
+ * Feel free to add/remove/revise anything.
+ */
+
 Scheduler::Scheduler(const Config &cfg)
     : cfg_(cfg), running_processes_(cfg.num_cpu),
       busy_ticks_per_cpu_(cfg.num_cpu) {}
