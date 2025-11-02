@@ -1,6 +1,7 @@
 #pragma once
 #include "config.hpp"
 #include "process.hpp"
+#include "cpu_worker.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -11,6 +12,7 @@
 #include <vector>
 #include "util.hpp"
 #include <barrier>
+#include <functional>
 
 // Note: May be better to implement as a Singleton as we only want one Scheduler
 // Check out `docs/scheduler.md` for design notes.
@@ -23,6 +25,9 @@ struct ProcessComparator {
 
 class Scheduler {
 public:
+  Scheduler() = default;
+  Scheduler(const Config &cfg);
+  ~Scheduler();
   // === LifeCycle ===
   void start(); // spins scheduler thread
   void stop();  // stops scheduler thread
@@ -46,10 +51,19 @@ public:
   // === Singleton Accessor ===
   Scheduler(Scheduler &other) = delete;       // Should not be copied
   void operator=(const Scheduler &) = delete; // Should not be assigned
+  Scheduler& getInstance();
+  void initialize(const Config &cfg);
 
+  void pause();
+  void resume();
+  bool is_paused() const;
+  void tick_barrier_sync();
+
+  uint32_t get_cpu_count() const;
+  uint32_t get_scheduler_tick_delay() const;
+  
 protected:
-  Scheduler(const Config &cfg);
-  ~Scheduler();
+  
 
 private:
   // === Singletons ===
@@ -58,6 +72,7 @@ private:
 
   // === Scheduler Internal Methods ===
   void tick_loop();
+  void preemption_check();        // preemption logic
   void short_term_dispatch();     // per-CPU RR/FCFS logic
   void medium_term_check();       // page faults / swapping
   void long_term_admission();     // job -> ready
@@ -66,10 +81,12 @@ private:
   Config cfg_;
   std::thread sched_thread_;
   std::atomic<uint32_t> tick_{0};
+  std::atomic<bool> paused_{false};
+  std::condition_variable pause_cv_;
   std::atomic<bool> sched_running_{false};
-  std::mutex shortTermMtx_;
-  std::mutex schedulerMtx_;
-  std::unique_ptr<std::barrier<>> tickSyncBarrier_;
+  std::mutex short_term_mtx_;
+  std::mutex scheduler_mtx_;
+  std::unique_ptr<std::barrier<>> tick_sync_barrier_;
   
   // === Queues ===
   Channel<std::shared_ptr<Process>> job_queue_;         // new processes, for long-term scheduler
@@ -78,13 +95,15 @@ private:
   Channel<std::shared_ptr<Process>> swapped_queue_;     // swapped to backing store, medium-term scheduler
 
   // === CPU State ===
+  std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
   std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
   std::vector<std::shared_ptr<Process>> finished_;      // finished processes, indexed by cpu id
   
   // === Scheduler Metrics ===
-  std::vector<uint64_t> busy_ticks_per_cpu_; // Busy ticks
-  std::unordered_map<uint32_t, uint32_t> cpu_quantum_remaining_; // RR bookkeeping
+  std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
+  std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
 
+  // === Scheduler State ===
 
   // === Utilities ===
   void initialize_vectors();

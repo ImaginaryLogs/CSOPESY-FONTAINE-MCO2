@@ -20,9 +20,10 @@ class Channel {
     T receive();
 
     bool isEmpty();
+    std::string snapshot();
     
   protected:
-    std::deque<std::shared_ptr<T>> q_; // dequeue for future implementation
+    std::deque<T> q_; // dequeue for future implementation
 
   private:
     std::mutex messageMtx_;
@@ -52,6 +53,7 @@ class DynamicVictimChannel {
 
     // Accessor
     bool isEmpty();
+    std::string snapshot();
 
   protected:
     std::multiset<std::shared_ptr<Process>, ProcessComparer> victimQ_;

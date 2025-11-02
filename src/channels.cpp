@@ -3,7 +3,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <sstream>
 #include "../include/util.hpp"
+
+
+
 
 template<typename T>
 void Channel<T>::send(const T& message) {
@@ -19,7 +23,7 @@ T Channel<T>::receive() {
   std::unique_lock<std::mutex> lock(messageMtx_);
   messageCv_.wait(lock, [this]{ return !q_.empty(); });
   T message = q_.front();
-  q_.pop();
+  q_.pop_front();
   return message;
 }
 
@@ -27,4 +31,15 @@ template<typename T>
 bool Channel<T>::isEmpty() {
   std::lock_guard<std::mutex> lock(messageMtx_);
   return q_.empty();
+}
+
+template<typename T>
+std::string Channel<T>::snapshot() {
+  std::lock_guard<std::mutex> lock(messageMtx_);
+  std::ostringstream oss;
+  oss << "Channel Snapshot: " << q_.size() << " messages\n";
+  for (const auto &msg : q_) {
+      oss << msg << "\n"; // Assumes T has operator<< overloaded
+  }
+  return oss.str();
 }

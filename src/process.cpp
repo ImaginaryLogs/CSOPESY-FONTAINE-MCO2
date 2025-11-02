@@ -37,6 +37,27 @@ static std::string inst_type_to_string(InstructionType type) {
   }
 }
 
+std::string Process::get_state_string() {
+  switch (m_state) {
+    case ProcessState::NEW:
+      return "NEW";
+    case ProcessState::READY:
+      return "READY";
+    case ProcessState::RUNNING:
+      return "RUNNING";
+    case ProcessState::WAITING:
+      return "WAITING";
+    case ProcessState::BLOCKED_PAGE_FAULT:
+      return "BLOCKED_PAGE_FAULT";
+    case ProcessState::SWAPPED_OUT:
+      return "SWAPPED_OUT";
+    case ProcessState::FINISHED:
+      return "FINISHED";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 /**
  * Helper: clamp value to uint16_t range [0, 65535]
  * Used for all arithmetic operations to prevent overflow

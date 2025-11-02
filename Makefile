@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -pthread -O2
+CXXFLAGS := -std=c++20 -Wall -pthread -O2
 INCLUDE := -I include
 
 SRC_DIR := src
@@ -10,7 +10,7 @@ SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
 # test target name (no .cpp extension)
-TEST := test_process_generator
+TEST := test_scheduler
 TEST_SRC := tests/$(TEST).cpp
 TEST_BIN := $(BUILD_DIR)/$(TEST)
 

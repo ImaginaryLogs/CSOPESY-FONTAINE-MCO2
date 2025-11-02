@@ -47,6 +47,7 @@ public:
   
   // === Methods ===
   void set_state(ProcessState s);
+  std::string get_state_string();
 
   // Execution API used by CPUWorker
   // Returns true if finished after this tick's execution

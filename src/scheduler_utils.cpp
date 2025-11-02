@@ -1,5 +1,6 @@
 #include "../include/scheduler.hpp"
 #include "../include/process.hpp"
+#include <sstream>
 
 // This files just contains Scheduler's Utility functions
 
@@ -7,9 +8,11 @@
 void Scheduler::initialize_vectors() {
   this->running_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
   this->finished_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
+  this->busy_ticks_per_cpu_ = std::vector<uint64_t>();
+  this->cpu_quantum_remaining_ = std::vector<uint32_t>();
 }
 
-// === SCHEDULER ALGORITHM IMPLEMENTATION ===
+// === SHORT TERM SCHEDULER ALGORITHM IMPLEMENTATION ===
 bool ProcessComparer::operator()(const std::shared_ptr<Process>& a, const std::shared_ptr<Process>& b) const {
   // Default comparison (by process ID)
   return a->id() < b->id();
@@ -73,6 +76,16 @@ DynamicVictimChannel::DynamicVictimChannel(SchedulingPolicy algo)
   DynamicVictimChannel::reformatQueue();
 }
 
+std::string DynamicVictimChannel::snapshot() {
+  std::lock_guard<std::mutex> lock(messageMtx_);
+  std::stringstream ss;
+
+  ss << "DVC Snapshot: " << victimQ_.size() << " processes\n";
+  for (const auto &proc : victimQ_) {
+      ss << "PID=" << proc->id() << ", Name=" << proc->name() << ", " << "\n";
+  }
+  return ss.str();
+}
 
 void DynamicVictimChannel::send(const std::shared_ptr<Process> &msg) {
   {
