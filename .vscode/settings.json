@@ -65,7 +65,12 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "barrier": "cpp",
+        "functional": "cpp",
+        "queue": "cpp",
+        "set": "cpp",
+        "xtree": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "C_Cpp.default.compilerArgs": ["-std=c++20"],
