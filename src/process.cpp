@@ -130,14 +130,23 @@ static void unroll_instruction(const Instruction &instr,
     return;
   }
 
-  if (instr.args.empty())
-    return; // malformed FOR, ignore
+  if (instr.args.empty()) {
+    for (const auto &inner : instr.nested)
+      out.push_back(inner);
+    return;
+  }
 
   int repeats = 0;
   try {
     repeats = std::stoi(instr.args[0]);
   } catch (...) {
     repeats = 0;
+  }
+
+  if (repeats <= 0) {
+    for (const auto &inner : instr.nested)
+      out.push_back(inner);
+    return;
   }
 
   for (int r = 0; r < repeats; ++r) {
