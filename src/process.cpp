@@ -3,14 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
-
-// TODO:
-// - Scheduler decrements m_delay_remaining per tick before calling
-// execute_tick().
-// - Scheduler sets m_metrics.created_tick at process start.
 
 // Enable debug logging by uncommenting:
 // #define DEBUG_PROCESS
@@ -37,24 +33,27 @@ static std::string inst_type_to_string(InstructionType type) {
   }
 }
 
+/**
+ * Convert process state enum to readable string
+ */
 std::string Process::get_state_string() {
   switch (m_state) {
-    case ProcessState::NEW:
-      return "NEW";
-    case ProcessState::READY:
-      return "READY";
-    case ProcessState::RUNNING:
-      return "RUNNING";
-    case ProcessState::WAITING:
-      return "WAITING";
-    case ProcessState::BLOCKED_PAGE_FAULT:
-      return "BLOCKED_PAGE_FAULT";
-    case ProcessState::SWAPPED_OUT:
-      return "SWAPPED_OUT";
-    case ProcessState::FINISHED:
-      return "FINISHED";
-    default:
-      return "UNKNOWN";
+  case ProcessState::NEW:
+    return "NEW";
+  case ProcessState::READY:
+    return "READY";
+  case ProcessState::RUNNING:
+    return "RUNNING";
+  case ProcessState::WAITING:
+    return "WAITING";
+  case ProcessState::BLOCKED_PAGE_FAULT:
+    return "BLOCKED_PAGE_FAULT";
+  case ProcessState::SWAPPED_OUT:
+    return "SWAPPED_OUT";
+  case ProcessState::FINISHED:
+    return "FINISHED";
+  default:
+    return "UNKNOWN";
   }
 }
 
@@ -79,9 +78,7 @@ static uint16_t clamp_uint16(int64_t v) {
 static bool is_number(const std::string &s) {
   if (s.empty())
     return false;
-  size_t i = 0;
-  if (s[0] == '+' || s[0] == '-')
-    i = 1;
+  size_t i = (s[0] == '+' || s[0] == '-') ? 1 : 0;
   for (; i < s.size(); ++i)
     if (!isdigit((unsigned char)s[i]))
       return false;
@@ -127,15 +124,17 @@ static void unroll_instruction(const Instruction &instr,
     return;
   }
 
-  if (depth >= FOR_MAX_NESTING) { // safety cap from spec (FOR_MAX_NESTING)
-    // append nested once to avoid infinite loops
+  if (depth >= FOR_MAX_NESTING) {
     for (const auto &inner : instr.nested)
       out.push_back(inner);
     return;
   }
 
-  if (instr.args.empty())
-    return; // malformed FOR, ignore
+  if (instr.args.empty()) {
+    for (const auto &inner : instr.nested)
+      out.push_back(inner);
+    return;
+  }
 
   int repeats = 0;
   try {
@@ -143,30 +142,44 @@ static void unroll_instruction(const Instruction &instr,
   } catch (...) {
     repeats = 0;
   }
+
+  if (repeats <= 0) {
+    for (const auto &inner : instr.nested)
+      out.push_back(inner);
+    return;
+  }
+
   for (int r = 0; r < repeats; ++r) {
     for (const auto &inner : instr.nested) {
-      if (inner.type == InstructionType::FOR) {
-        // recursive unroll
-        Instruction nested_copy = inner;
-        unroll_instruction(nested_copy, out, depth + 1);
-      } else {
+      if (inner.type == InstructionType::FOR)
+        unroll_instruction(inner, out, depth + 1);
+      else
         out.push_back(inner);
-      }
     }
   }
 }
 
+/**
+ * Constructor: preprocesses and unrolls FOR loops
+ */
 Process::Process(uint32_t id, const std::string &name,
                  std::vector<Instruction> ins)
     : m_id(id), m_name(name), m_state(ProcessState::NEW), m_instr() {
-  // Pre-expand FOR instructions to simplify runtime.
+
+  // Pre-expand FOR instructions
   for (const auto &inst : ins) {
-    if (inst.type == InstructionType::FOR) {
+    if (inst.type == InstructionType::FOR)
       unroll_instruction(inst, m_instr, 0);
-    } else {
+    else
       m_instr.push_back(inst);
-    }
   }
+
+  // Initialize metrics
+  m_metrics.total_instructions = static_cast<uint32_t>(m_instr.size());
+  m_metrics.executed_instructions = 0;
+  m_metrics.start_time = std::time(nullptr);
+  m_metrics.finish_time = 0;
+  m_metrics.core_id = UINT32_MAX;
 
 #ifdef DEBUG_PROCESS
   std::ostringstream dbg;
@@ -176,7 +189,7 @@ Process::Process(uint32_t id, const std::string &name,
 #endif
 }
 
-// Accessors
+// === Basic Accessors ===
 uint32_t Process::id() const { return m_id; }
 std::string Process::name() const { return m_name; }
 
@@ -190,33 +203,70 @@ void Process::set_state(ProcessState s) {
   m_state = s;
 }
 
+void Process::set_core_id(uint32_t core) {
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_metrics.core_id = core;
+}
+
+uint32_t Process::get_core_id() const { return m_metrics.core_id; }
+uint32_t Process::get_total_instructions() const {
+  return m_metrics.total_instructions;
+}
+uint32_t Process::get_executed_instructions() const {
+  return m_metrics.executed_instructions;
+}
+
 std::vector<std::string> Process::get_logs() {
   std::lock_guard<std::mutex> lk(m_mutex);
   return m_logs;
 }
 
+/**
+ * Formats a concise single-line summary for screen -ls / report-util
+ */
+std::string Process::summary_line(bool colorize) const {
+  auto fmt_time = [](std::time_t t) -> std::string {
+    if (t == 0)
+      return "(--)";
+    std::tm tm_buf{};
+#ifdef _WIN32
+    localtime_s(&tm_buf, &t);
+#else
+    localtime_r(&t, &tm_buf);
+#endif
+    std::ostringstream ts;
+    ts << "(" << std::put_time(&tm_buf, "%m/%d/%Y %I:%M:%S%p") << ")";
+    return ts.str();
+  };
+
+  std::ostringstream oss;
+  std::lock_guard<std::mutex> lk(m_mutex);
+
+  oss << std::left << std::setw(12) << m_name << " "
+      << fmt_time(m_metrics.start_time) << "   ";
+
+  if (m_state == ProcessState::FINISHED) {
+    oss << "Finished   ";
+  } else {
+    if (m_metrics.core_id != UINT32_MAX)
+      oss << "Core: " << m_metrics.core_id << "   ";
+    else
+      oss << "Core: -   ";
+  }
+
+  oss << std::right << m_metrics.executed_instructions << " / "
+      << m_metrics.total_instructions;
+
+  return oss.str();
+}
+
+/**
+ * SMI summary with logs (unchanged)
+ */
 std::string Process::smi_summary() {
   std::lock_guard<std::mutex> lk(m_mutex);
   std::ostringstream oss;
-  oss << "Process " << m_name << " [";
-  switch (m_state) {
-  case ProcessState::NEW:
-    oss << "NEW";
-    break;
-  case ProcessState::READY:
-    oss << "READY";
-    break;
-  case ProcessState::RUNNING:
-    oss << "RUNNING";
-    break;
-  case ProcessState::WAITING:
-    oss << "WAITING";
-    break;
-  case ProcessState::FINISHED:
-    oss << "FINISHED";
-    break;
-  }
-  oss << "]\n";
+  oss << "Process " << m_name << " [" << get_state_string() << "]\n";
   oss << "PC: " << pc << " / " << m_instr.size() << "\n";
   oss << "Logs:\n";
   for (const auto &line : m_logs)
@@ -242,13 +292,11 @@ read_token_value(const std::string &token,
                  std::unordered_map<std::string, uint16_t> &vars) {
   if (is_number(token)) {
     try {
-      long long v = std::stoll(token);
-      return clamp_uint16(v);
+      return clamp_uint16(std::stoll(token));
     } catch (...) {
       return 0;
     }
   }
-  // variable name
   auto it = vars.find(token);
   if (it == vars.end()) {
     vars[token] = 0;
@@ -294,6 +342,14 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   consumed_ticks = 1; // default one tick consumed
   std::lock_guard<std::mutex> lk(m_mutex);
 
+  // Handle busy-wait delay (simulates CPU hold cycles)
+  if (m_delay_remaining > 0) {
+    --m_delay_remaining;
+    m_state = ProcessState::RUNNING; // stays running but not executing new inst
+    consumed_ticks = 1;
+    return false;
+  }
+
   if (m_state == ProcessState::FINISHED) {
 #ifdef DEBUG_PROCESS
     std::ostringstream dbg;
@@ -328,6 +384,7 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   if (pc >= m_instr.size()) {
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
+    m_metrics.finish_time = std::time(nullptr);
     return true;
   }
 
@@ -446,23 +503,25 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
     // Unknown instruction: skip
     ++pc;
     break;
-  } // end switch
+  }
+
+  // Increment executed-instruction count (skip FOR)
+  if (inst.type != InstructionType::FOR)
+    ++m_metrics.executed_instructions;
 
 #ifdef DEBUG_PROCESS
-  if (inst.type != InstructionType::FOR) { // Skip logging unrolled FORs
-    std::ostringstream dbg;
-    dbg << m_name << "[pc=" << pc << "]: " << inst_type_to_string(inst.type);
-    if (!inst.args.empty()) {
-      dbg << "(";
-      for (size_t i = 0; i < inst.args.size(); ++i) {
-        if (i > 0)
-          dbg << ", ";
-        dbg << inst.args[i];
-      }
-      dbg << ")";
+  std::ostringstream dbg;
+  dbg << m_name << "[pc=" << pc << "]: " << inst_type_to_string(inst.type);
+  if (!inst.args.empty()) {
+    dbg << "(";
+    for (size_t i = 0; i < inst.args.size(); ++i) {
+      if (i > 0)
+        dbg << ", ";
+      dbg << inst.args[i];
     }
-    m_logs.push_back(dbg.str());
+    dbg << ")";
   }
+  m_logs.push_back(dbg.str());
 #endif
 
   // Set busy-wait delay if configured
@@ -475,6 +534,7 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   if (pc >= m_instr.size()) {
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
+    m_metrics.finish_time = std::time(nullptr);
     return true;
   }
 

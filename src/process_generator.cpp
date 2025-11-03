@@ -336,7 +336,8 @@ void ProcessGenerator::loop() {
   using namespace std::chrono_literals;
   while (running_.load()) {
     // sleep between process generations
-    std::this_thread::sleep_for(std::chrono::seconds(cfg_.batch_process_freq));
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        cfg_.batch_process_freq * cfg_.scheduler_tick_delay));
 
     // Generate process instructions while respecting configured budget
     uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
@@ -372,7 +373,10 @@ void ProcessGenerator::loop() {
     // Assign id first (post-increment) and use the same id for the name to
     // avoid off-by-one mismatch between id and name.
     uint32_t id = next_id_.fetch_add(1);
-    auto process = std::make_shared<Process>(id, "P" + std::to_string(id), ins);
+    std::ostringstream name;
+    name << "p" << std::setw(2) << std::setfill('0') << id;
+    auto process = std::make_shared<Process>(id, name.str(), ins);
+
 #ifdef DEBUG_GENERATOR
     {
       std::ostringstream dbg;

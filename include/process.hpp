@@ -1,53 +1,73 @@
 #pragma once
 #include "instruction.hpp"
+#include <ctime>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-enum class ProcessState { 
+enum class ProcessState {
   // Long Term
-  NEW, 
+  NEW,
   // Medium Term
   WAITING,
-  BLOCKED_PAGE_FAULT, 
+  BLOCKED_PAGE_FAULT,
   SWAPPED_OUT,
   FINISHED,
   // Short Term
-  READY, 
+  READY,
   RUNNING,
 };
 
+/**
+ * Runtime metrics for process execution
+ * Extended to include instruction counts, timing, and CPU affinity.
+ */
 struct ProcessMetrics {
   uint32_t created_tick{0};
   uint32_t finished_tick{0};
+  uint32_t executed_instructions{0};
+  uint32_t total_instructions{0};
+  uint32_t core_id{UINT32_MAX}; // Which CPU core executed this process
+  std::time_t start_time{0};
+  std::time_t finish_time{0};
 };
 
+/**
+ * Represents a process executing a sequence of instructions.
+ * Handles its own instruction set, internal variables, and execution tick
+ * cycle.
+ */
 class Process {
 public:
   Process(uint32_t id, const std::string &name, std::vector<Instruction> ins);
-  
+
   uint32_t id() const;
   std::string name() const;
   ProcessState state();
-  
+
   // === Metadata accessors ===
   std::vector<std::string> get_logs(); // thread-safe snapshot
   std::string smi_summary();           // formatted status + logs
+  std::string summary_line(bool colorize = false) const; // for screen -ls
 
+  // === Scheduler metadata ===
   uint32_t priority{0};         // process priority
   uint32_t ticks_waited{0};     // for aging or fairness
   uint32_t last_active_tick{0}; // for LRU / victim selection
   uint32_t cpu_id{256};         // which CPU last ran it
 
   // === Program Related Members ===
-  uint32_t pc{0}; // program counter
-  // Memory: variable storage
-  std::unordered_map<std::string, uint16_t> vars;
-  
-  // === Methods ===
+  uint32_t pc{0};                                 // program counter
+  std::unordered_map<std::string, uint16_t> vars; // memory storage
+
+  // === Execution control ===
   void set_state(ProcessState s);
   std::string get_state_string();
+  void set_core_id(uint32_t core);
+  uint32_t get_core_id() const;
+  uint32_t get_total_instructions() const;
+  uint32_t get_executed_instructions() const;
 
   // Execution API used by CPUWorker
   // Returns true if finished after this tick's execution
@@ -60,8 +80,9 @@ private:
   std::vector<Instruction> m_instr;
   ProcessState m_state{ProcessState::NEW};
   std::vector<std::string> m_logs;
-  std::mutex m_mutex; // protects state, logs, vars, pc
-  // runtime helpers:
+  mutable std::mutex m_mutex; // protects state, logs, vars, pc
+
+  // runtime helpers
   uint32_t m_delay_remaining{0};
   uint32_t m_sleep_remaining{0};
   uint32_t m_for_stack_depth{0};

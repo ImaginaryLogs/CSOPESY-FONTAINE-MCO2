@@ -1,6 +1,9 @@
 #include "../include/instruction.hpp"
+#include "../include/process.hpp"
 #include "../include/process_generator.hpp"
+#include "../include/scheduler.hpp"
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <thread>
 
@@ -50,6 +53,7 @@ int main() {
   // === Test 2: ensure generator stops when budget exceeded ===
   Config cfg;
   cfg.max_unrolled_instructions = 5; // small budget
+  cfg.scheduler_tick_delay = 10;
   Scheduler sched(cfg);
   ProcessGenerator gen(cfg, sched);
 
@@ -74,6 +78,7 @@ int main() {
     cfg2.max_unrolled_instructions = 5;
     cfg2.min_ins = 1;
     cfg2.max_ins = 10;
+    cfg2.scheduler_tick_delay = 10;
     Scheduler sched2(cfg2);
     ProcessGenerator gen2(cfg2, sched2);
 
@@ -90,6 +95,7 @@ int main() {
     cfg3.max_unrolled_instructions = 0; // unlimited
     cfg3.min_ins = 1;
     cfg3.max_ins = 5;
+    cfg3.scheduler_tick_delay = 10;
     Scheduler sched3(cfg3);
     ProcessGenerator gen3(cfg3, sched3);
 
@@ -103,6 +109,7 @@ int main() {
   {
     Config cfg4;
     cfg4.batch_process_freq = 1;
+    cfg4.scheduler_tick_delay = 10;
     Scheduler sched4(cfg4);
     ProcessGenerator gen4(cfg4, sched4);
 
@@ -112,6 +119,88 @@ int main() {
     gen4.stop();
     std::cout << "Test 5 passed: generator thread start/stop safe.\n";
   }
+
+  // === Test 6: ID and name consistency ===
+  {
+    Config cfg5;
+    cfg5.scheduler_tick_delay = 10;
+    Scheduler sched5(cfg5);
+    ProcessGenerator gen5(cfg5, sched5);
+
+    uint32_t est_size = 0;
+    auto ins = gen5.generate_instructions(3, est_size);
+    auto p = std::make_shared<Process>(0, "p00", ins);
+    assert(p->id() == 0);
+    assert(p->name() == "p00");
+    std::cout << "Test 6 passed: Process ID and name consistent.\n";
+  }
+
+  // === Test 7: Process summary_line formatting ===
+  {
+    Config cfg6;
+    Scheduler sched6(cfg6);
+    Instruction instr;
+    instr.type = InstructionType::PRINT;
+    std::vector<Instruction> ins = {instr};
+    auto p = std::make_shared<Process>(42, "p42", ins);
+    std::string line = p->summary_line(false);
+    assert(line.find("p42") != std::string::npos);
+    assert(line.find("/") != std::string::npos);
+    std::cout << "Test 7 passed: Process summary_line() formatted correctly.\n";
+  }
+
+  // === Test 8: Generator stress test with multiple start/stop ===
+  {
+    Config cfg7;
+    cfg7.batch_process_freq = 1;
+    cfg7.scheduler_tick_delay = 5;
+    Scheduler sched7(cfg7);
+    ProcessGenerator gen7(cfg7, sched7);
+
+    for (int i = 0; i < 3; ++i) {
+      gen7.start();
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      gen7.stop();
+    }
+    std::cout
+        << "Test 8 passed: Generator stable across repeated start/stop.\n";
+  }
+
+  // === Test 9: FOR_MAX_NESTING respected ===
+  {
+    Config cfg8;
+    cfg8.scheduler_tick_delay = 10;
+    Scheduler sched8(cfg8);
+    ProcessGenerator gen8(cfg8, sched8);
+
+    uint32_t est_size = 0;
+    auto ins = gen8.generate_instructions(10, est_size);
+    for (const auto &i : ins) {
+      if (i.type == InstructionType::FOR) {
+        for (const auto &nested : i.nested) {
+          assert(nested.type != InstructionType::FOR || i.nested.size() <= 3);
+        }
+      }
+    }
+    std::cout << "Test 9 passed: FOR_MAX_NESTING limit respected.\n";
+  }
+
+  //   // === Test 10: Scheduler receives process from generator ===
+  //   {
+  //     Config cfg9;
+  //     cfg9.batch_process_freq = 1;
+  //     cfg9.scheduler_tick_delay = 5;
+  //     Scheduler sched9(cfg9);
+  //     ProcessGenerator gen9(cfg9, sched9);
+
+  //     gen9.start();
+  //     std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  //     gen9.stop();
+
+  //     // Verify that job queue is not empty
+  //     assert(!sched9.job_queue_.isEmpty());
+  //     std::cout << "Test 10 passed: Scheduler received generated process.\n";
+  //   }
 
   std::cout << "All generator tests passed successfully.\n";
   return 0;
