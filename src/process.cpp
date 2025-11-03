@@ -333,6 +333,14 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   consumed_ticks = 1; // default one tick consumed
   std::lock_guard<std::mutex> lk(m_mutex);
 
+  // Handle busy-wait delay (simulates CPU hold cycles)
+  if (m_delay_remaining > 0) {
+    --m_delay_remaining;
+    m_state = ProcessState::RUNNING; // stays running but not executing new inst
+    consumed_ticks = 1;
+    return false;
+  }
+
   if (m_state == ProcessState::FINISHED) {
 #ifdef DEBUG_PROCESS
     std::ostringstream dbg;
