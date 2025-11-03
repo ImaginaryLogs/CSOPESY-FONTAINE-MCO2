@@ -7,7 +7,8 @@
 #include "../include/util.hpp"
 
 
-
+template class Channel<std::string>;
+template class Channel<std::shared_ptr<Process>>;
 
 template<typename T>
 void Channel<T>::send(const T& message) {
@@ -40,6 +41,7 @@ void Channel<T>::empty(){
   return;
 }
 
+
 template<>
 inline std::string Channel<std::string>::snapshot(){
   std::lock_guard<std::mutex> lock(messageMtx_);
@@ -68,4 +70,8 @@ inline std::string Channel<std::shared_ptr<Process>>::snapshot() {
         }
     }
     return oss.str();
+}
+
+bool TimerEntry::operator>(const TimerEntry& other) const {
+    return this->wake_tick > other.wake_tick;
 }

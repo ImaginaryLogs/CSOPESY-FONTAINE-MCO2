@@ -96,3 +96,11 @@ class DynamicVictimChannel {
     std::mutex messageMtx_;
     std::condition_variable messageCv_;
 };
+
+// An Entry of a Process for the Timer to check
+struct TimerEntry {
+  std::shared_ptr<Process> process;
+  uint64_t wake_tick;
+  inline bool operator>(const TimerEntry& other) const;
+};
+

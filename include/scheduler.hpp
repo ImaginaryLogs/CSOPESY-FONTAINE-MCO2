@@ -12,6 +12,7 @@
 #include <vector>
 #include "util.hpp"
 #include <barrier>
+#include <queue>
 #include <functional>
 
 // Note: May be better to implement as a Singleton as we only want one Scheduler
@@ -47,6 +48,10 @@ public:
   // === Short-Term Scheduling API ===
   std::shared_ptr<Process> dispatch_to_cpu(uint32_t cpu_id);
   void release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p, bool finished, bool yielded);
+  
+  // === Pre-Post Scheduling API ===
+  void sleep_process(std::shared_ptr<Process> p, uint64_t duration);
+
 
   // === Diagnostics ===
   std::string snapshot(); // returns screen-ls string
@@ -76,6 +81,9 @@ private:
   void short_term_dispatch();     // per-CPU RR/FCFS logic
   void medium_term_check();       // page faults / swapping
   void long_term_admission();     // job -> ready
+  void timer_check();
+  void log_status();
+  void pause_check();
 
   // === Internal Scheduler State === 
   Config cfg_;
@@ -90,10 +98,11 @@ private:
   Channel<std::string> log_queue;
   
   // === Queues ===
-  Channel<std::shared_ptr<Process>> job_queue_;         // new processes, for long-term scheduler
-  DynamicVictimChannel ready_queue_;                    // ready process, for short-term scheduler
-  Channel<std::shared_ptr<Process>> blocked_queue_;     // sleeping or page-faulted, medium-term scheduler
-  Channel<std::shared_ptr<Process>> swapped_queue_;     // swapped to backing store, medium-term scheduler
+  Channel<std::shared_ptr<Process>> job_queue_;                                           // new processes, for long-term scheduler
+  DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
+  Channel<std::shared_ptr<Process>> blocked_queue_;                                       // sleeping or page-faulted, medium-term scheduler
+  Channel<std::shared_ptr<Process>> swapped_queue_;                                       // swapped to backing store, medium-term scheduler
+  std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> sleep_queue_;  // sleep process, timer
 
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id

@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <string>
 
-
 enum SchedulingPolicy {
   RR,
   FCFS,

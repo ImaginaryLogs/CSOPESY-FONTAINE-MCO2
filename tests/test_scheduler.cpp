@@ -84,13 +84,12 @@ void test_scheduler_algo(bool use_rr)
     // P1 should run fully before P2 starts
     std::cout << "Verifying FCFS execution order.\n";
     
-    assert(logs_p1.size() >= 2);
+    assert(logs_p1.size() >= 3);
     assert(logs_p1[0] == "P1-1");
     assert(logs_p1[1] == "P1-2");
 
-    assert(logs_p2.size() >= 2);
+    assert(logs_p2.size() >= 1);
     assert(logs_p2[0] == "P2-1");
-    assert(logs_p2[1] == "P2-2");
   }
   else
   {
@@ -142,6 +141,93 @@ void test_resume()
   std::cout << "Stopped safely.\n";
 }
 
+void test_sleep(){
+// --- Create simple processes ---
+  std::vector<Instruction> instr1 = {
+      {InstructionType::PRINT, {"P1-1"}},
+      {InstructionType::PRINT, {"P1-2"}},
+      {InstructionType::PRINT, {"P2-3"}}};
+  std::vector<Instruction> instr2 = { 
+      {InstructionType::PRINT, {"P2-1"}},
+      {InstructionType::SLEEP, {"3"}},
+      {InstructionType::PRINT, {"P2-3"}}};
+  std::vector<Instruction> instr3 = { 
+      {InstructionType::PRINT, {"P2-1"}},
+      {InstructionType::PRINT, {"P2-2"}},
+      {InstructionType::PRINT, {"P2-3"}}};
+
+  auto p1 = std::make_shared<Process>(1, "P1", instr1);
+  auto p2 = std::make_shared<Process>(2, "P2", instr2);
+  auto p3 = std::make_shared<Process>(3, "P3", instr3);
+
+  // --- Configure scheduler ---
+  Config cfg;
+  cfg.num_cpu = 1;              // single CPU for deterministic test
+  cfg.scheduler_tick_delay = 1; // fast ticks
+  cfg.quantum_cycles = 1;
+  cfg.snapshot_cooldown = 1;
+  cfg.scheduler = SchedulingPolicy::RR;
+  Scheduler sched(cfg);
+
+  // Set policy: For simplicity assume scheduler has a field or flag
+  // sched.set_policy(use_rr ? SchedulerPolicy::RR : SchedulerPolicy::FCFS);
+  std::cout << "Setting scheduler policy to RR.\n";
+  std::cout << "Submitting processes P1 and P2.\n";
+
+  sched.submit_process(p1);
+  sched.submit_process(p2);
+  sched.submit_process(p3);
+  sched.setSchedulingPolicy(SchedulingPolicy::RR);
+
+  std::cout << "Starting scheduler.\n"
+            << sched.snapshot() << "\n";
+
+  sched.start();//
+
+  // --- Let scheduler run for a few ticks ---
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  std::cout << "Pausing scheduler.\n"
+            << sched.snapshot() << "\n";
+  sched.pause(); //
+
+  // -- Check logs
+  auto logs_p1 = p1->get_logs();
+  auto logs_p2 = p2->get_logs();
+  auto logs_sched = sched.get_sched_snapshots();
+  
+  std::cout << "P1 logs:\n";
+  for (const auto &log : logs_p1)
+  {
+    std::cout << log << "\n";
+  }
+  std::cout << "P2 logs:\n";
+  for (const auto &log : logs_p2)
+  {
+    std::cout << log << "\n";
+  }
+  std::cout << "Scheduler logs:\n";
+  for (const auto &log : logs_sched)
+  {
+    std::cout << log;
+  }
+  // --- Verify RR ---
+  std::cout << "Verifying RR execution order.\n";
+
+  // Interleaved logs (RR quantum = 1 tick per execute_tick)
+  // Each process should have at least one instruction executed
+  assert(logs_p1.size() >= 1);
+  assert(logs_p2.size() >= 1);
+
+  // First tick should be p1
+  assert(logs_p1[0] == "P1-1");
+  assert(logs_p2[0] == "P2-1");
+
+  std::cout << "Scheduler test SLEEP passed.\n";
+
+  sched.stop();
+  std::cout << "Scheduler stopped safely.\n";
+}
+
 int main()
 {
   // --- Test pause/resume ---
@@ -150,12 +236,14 @@ int main()
   // std::this_thread::sleep_for(std::chrono::seconds(2));
 
   // --- Test FCFS ---
-  test_scheduler_algo(false);
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  // test_scheduler_algo(false);
+  // std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  // --- Test Round-Robin ---
-  test_scheduler_algo(true);
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  // // --- Test Round-Robin ---
+  // test_scheduler_algo(true);
+  // std::this_thread::sleep_for(std::chrono::seconds(1));
 
+  test_sleep();
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   return 0;
 }

@@ -488,6 +488,7 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
       ++pc; // advance PC so when sleep ends we resume after SLEEP
+      
     }
     break;
   }
