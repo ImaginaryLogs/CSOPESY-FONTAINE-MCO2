@@ -80,7 +80,7 @@ private:
   std::vector<Instruction> m_instr;
   ProcessState m_state{ProcessState::NEW};
   std::vector<std::string> m_logs;
-  std::mutex m_mutex; // protects state, logs, vars, pc
+  mutable std::mutex m_mutex; // protects state, logs, vars, pc
 
   // runtime helpers
   uint32_t m_delay_remaining{0};
