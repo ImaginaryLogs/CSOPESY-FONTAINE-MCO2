@@ -372,7 +372,7 @@ void ProcessGenerator::loop() {
     // Assign id first (post-increment) and use the same id for the name to
     // avoid off-by-one mismatch between id and name.
     uint32_t id = next_id_.fetch_add(1);
-    auto process = std::make_shared<Process>(id, "P" + std::to_string(id), ins);
+    auto process = std::make_shared<Process>(id, "p" + std::to_string(id), ins);
 #ifdef DEBUG_GENERATOR
     {
       std::ostringstream dbg;
