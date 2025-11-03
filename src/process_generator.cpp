@@ -272,6 +272,38 @@ ProcessGenerator::generate_instructions(uint32_t target_top_level,
   return ins;
 }
 
+// /**
+//  * Revised generate_instructions for test case 4.
+//  */
+// std::vector<Instruction>
+// ProcessGenerator::generate_instructions(uint32_t count, uint32_t &est_size) {
+//   std::vector<Instruction> result;
+//   result.reserve(count);
+
+//   // Ensure variable x exists with value 0 (DECLARATION)
+//   Instruction decl;
+//   decl.type = InstructionType::DECLARE;
+//   decl.args = {"x", "0"};
+//   result.push_back(decl);
+
+//   bool print_next = true;
+//   for (uint32_t i = 0; i < count; ++i) {
+//     Instruction instr;
+//     if (print_next) {
+//       instr.type = InstructionType::PRINT;
+//       instr.args = {"Value from: x"};
+//     } else {
+//       instr.type = InstructionType::ADD;
+//       instr.args = {"x", "x", std::to_string(rand() % 10 + 1)};
+//     }
+//     result.push_back(instr);
+//     print_next = !print_next;
+//   }
+
+//   est_size = static_cast<uint32_t>(result.size());
+//   return result;
+// }
+
 /**
  * Start the process generation thread
  *
