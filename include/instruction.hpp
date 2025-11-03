@@ -5,6 +5,7 @@
 
 enum class InstructionType { PRINT, DECLARE, ADD, SUBTRACT, SLEEP, FOR };
 
+// Represents a single instruction in the process's instruction set
 struct Instruction {
   InstructionType type;
   std::vector<std::string> args; // raw args; parse into vars/values

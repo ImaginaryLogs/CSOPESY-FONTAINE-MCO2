@@ -1,6 +1,14 @@
 #pragma once
-#include "scheduler.hpp"
+#include <memory>
 #include <thread>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <string>
+#include <cstdint>
+
+// Forward declaration to break circular dependency
+class Scheduler;
 
 class CPUWorker {
 public:
@@ -15,4 +23,5 @@ private:
   Scheduler &sched_;
   std::thread thread_;
   std::atomic<bool> running_{false};
+
 };
