@@ -70,13 +70,16 @@ The main function can be found in `src/main.cpp`. Jump to [3. Building](#3-build
 
 ## 3. Building
 
-> write stuff
+### 3.1. Windows
+
+#### MSYS2 UCRT64
+> g++ -std=c++20 -Iinclude   src/cli.cpp src/reporter.cpp src/screen.cpp   src/cpu_worker.cpp src/process.cpp   src/scheduler.cpp src/scheduler_utils.cpp   src/process_generator.cpp src/main.cpp   -o csopesy.exe
 
 ## 4. Running
 
 ### 4.1. Windows
 
-> write stuff
+> ./csopesy.exe
 
 ### 4.2. Linux/macOS/WSL
 
