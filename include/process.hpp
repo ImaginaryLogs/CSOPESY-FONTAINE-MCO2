@@ -19,6 +19,13 @@ enum class ProcessState {
   RUNNING,
 };
 
+struct ProcessReturnContext{
+  ProcessState state;
+  std::vector<std::string> args;
+};
+
+bool is_yielded(ProcessReturnContext context) noexcept;
+
 /**
  * Runtime metrics for process execution
  * Extended to include instruction counts, timing, and CPU affinity.
@@ -96,7 +103,7 @@ public:
 
   // Execution API used by CPUWorker
   // Returns the state of the process after this tick's execution
-  ProcessState execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
+  ProcessReturnContext execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
                             uint32_t &consumed_ticks);
 
 private:

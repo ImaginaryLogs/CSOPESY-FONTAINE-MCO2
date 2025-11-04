@@ -2,9 +2,11 @@
 #include <cstdint>
 #include <string>
 #include <set>
+#include <map>
 #include <functional>
 #include "config.hpp"
 #include "process.hpp"
+#include "util.hpp"
 
 uint16_t clamp_uint16(int64_t v);
 std::string now_iso();
@@ -103,4 +105,3 @@ struct TimerEntry {
   uint64_t wake_tick;
   inline bool operator>(const TimerEntry& other) const;
 };
-

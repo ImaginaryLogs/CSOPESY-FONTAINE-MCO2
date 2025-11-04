@@ -7,7 +7,6 @@
 
 void Scheduler::initialize_vectors() {
   this->running_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
-  this->finished_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
   this->busy_ticks_per_cpu_ = std::vector<uint64_t>(cfg_.num_cpu, 0);
   this->cpu_quantum_remaining_ = std::vector<uint32_t>(cfg_.num_cpu, cfg_.quantum_cycles - 1);
 }

@@ -33,6 +33,8 @@ static std::string inst_type_to_string(InstructionType type) {
   }
 }
 
+
+
 /**
  * Convert process state enum to readable string
  */
@@ -225,7 +227,9 @@ std::vector<std::string> Process::get_logs() {
 }
 
 // === State Query Helpers ===
-bool Process::is_new() const noexcept { return m_state == ProcessState::NEW; }
+bool Process::is_new() const noexcept { 
+  return m_state == ProcessState::NEW; 
+}
 bool Process::is_ready() const noexcept {
   return m_state == ProcessState::READY;
 }
@@ -243,6 +247,13 @@ bool Process::is_swapped() const noexcept {
 }
 bool Process::is_blocked() const noexcept {
   return m_state == ProcessState::BLOCKED_PAGE_FAULT;
+}
+
+bool is_yielded(ProcessReturnContext context) noexcept {
+  return context.state == ProcessState::READY ||
+         context.state == ProcessState::WAITING ||
+         context.state == ProcessState::FINISHED ||
+         context.state == ProcessState::BLOCKED_PAGE_FAULT;
 }
 
 // === State Transition Helpers ===
@@ -357,216 +368,4 @@ read_token_value(const std::string &token,
 static void set_var_value(const std::string &name, uint16_t v,
                           std::unordered_map<std::string, uint16_t> &vars) {
   vars[name] = v;
-}
-
-/**
- * Main execution tick - Executes one instruction or handles sleep/delay
- *
- * @param global_tick Current scheduler tick count
- * @param delays_per_exec Number of busy-wait ticks after each instruction
- * @param consumed_ticks Output parameter for ticks used this execution
- * @return ProcessState corresponding
- */
-ProcessState Process::execute_tick(uint32_t global_tick,
-                                   uint32_t delays_per_exec,
-                                   uint32_t &consumed_ticks) {
-  consumed_ticks = 1; // default one tick consumed
-  std::lock_guard<std::mutex> lk(m_mutex);
-
-  // --- Case 1: Delay / busy wait ---
-  if (m_delay_remaining > 0) {
-    --m_delay_remaining;
-    m_state = ProcessState::RUNNING;
-    return ProcessState::RUNNING;
-  }
-
-  // --- Case 2: Finished already ---
-  if (m_state == ProcessState::FINISHED) {
-#ifdef DEBUG_PROCESS
-    std::ostringstream dbg;
-    dbg << m_name << ": Already FINISHED at tick " << global_tick
-        << " (finished at " << m_metrics.finished_tick << ")";
-    m_logs.push_back(dbg.str());
-#endif
-    return ProcessState::FINISHED;
-  }
-
-  // --- Case 3: Currently sleeping ---
-  if (m_sleep_remaining > 0) {
-    --m_sleep_remaining;
-#ifdef DEBUG_PROCESS
-    {
-      std::ostringstream dbg;
-      dbg << m_name << ": Sleeping, remaining=" << m_sleep_remaining;
-      m_logs.push_back(dbg.str());
-    }
-#endif
-    if (m_sleep_remaining == 0) {
-      m_state = ProcessState::READY;
-      return ProcessState::READY; // wakes up, can be rescheduled
-    } else {
-      m_state = ProcessState::WAITING;
-      return ProcessState::WAITING; // still sleeping, yield CPU
-    }
-  }
-
-  // --- Case 4: Out of instructions ---
-  if (pc >= m_instr.size()) {
-    m_state = ProcessState::FINISHED;
-    m_metrics.finished_tick = global_tick;
-    m_metrics.finish_time = std::time(nullptr);
-    return ProcessState::FINISHED;
-  }
-
-  // --- Case 5: Execute instruction normally ---
-  m_state = ProcessState::RUNNING;
-  const Instruction &inst = m_instr[pc];
-
-  switch (inst.type) {
-  case InstructionType::PRINT: {
-    // PRINT(msg) or PRINT("Hello world from <process_name>!")
-    std::string out;
-    if (!inst.args.empty()) {
-      out = inst.args[0];
-    } else {
-      std::ostringstream tmp;
-      tmp << "Hello world from " << m_name << "!";
-      out = tmp.str();
-    }
-    m_logs.push_back(out);
-    ++pc;
-    break;
-  }
-
-  case InstructionType::DECLARE: {
-    // args: var, value
-    if (inst.args.size() >= 2) {
-      const std::string &var = inst.args[0];
-      const std::string &valtok = inst.args[1];
-      uint16_t v = read_token_value(valtok, vars);
-      set_var_value(var, v, vars);
-#ifdef DEBUG_PROCESS
-      std::ostringstream dbg;
-      dbg << m_name << ": DECLARE " << var << " = " << v;
-      m_logs.push_back(dbg.str());
-#endif
-    } else if (inst.args.size() == 1) {
-      set_var_value(inst.args[0], 0, vars);
-#ifdef DEBUG_PROCESS
-      std::ostringstream dbg;
-      dbg << m_name << ": DECLARE " << inst.args[0] << " = 0";
-      m_logs.push_back(dbg.str());
-#endif
-    }
-    ++pc;
-    break;
-  }
-
-  case InstructionType::ADD: {
-    // ADD(var1, var2/value, var3/value) -> var1 = var2 + var3
-    if (inst.args.size() >= 3) {
-      const std::string &dst = inst.args[0];
-      uint16_t a = read_token_value(inst.args[1], vars);
-      uint16_t b = read_token_value(inst.args[2], vars);
-      uint32_t sum = static_cast<uint32_t>(a) + static_cast<uint32_t>(b);
-      uint16_t result = clamp_uint16(sum);
-      set_var_value(dst, result, vars);
-#ifdef DEBUG_PROCESS
-      std::ostringstream dbg;
-      dbg << m_name << ": ADD " << dst << " = " << a << " + " << b << " = "
-          << result << (sum > 65535 ? " (clamped)" : "");
-      m_logs.push_back(dbg.str());
-#endif
-    }
-    ++pc;
-    break;
-  }
-
-  case InstructionType::SUBTRACT: {
-    if (inst.args.size() >= 3) {
-      const std::string &dst = inst.args[0];
-      int32_t a = static_cast<int32_t>(read_token_value(inst.args[1], vars));
-      int32_t b = static_cast<int32_t>(read_token_value(inst.args[2], vars));
-      int64_t res = static_cast<int64_t>(a) - static_cast<int64_t>(b);
-      uint16_t result = clamp_uint16(res);
-      set_var_value(dst, result, vars);
-#ifdef DEBUG_PROCESS
-      std::ostringstream dbg;
-      dbg << m_name << ": SUBTRACT " << dst << " = " << a << " - " << b << " = "
-          << result << (res < 0 || res > 65535 ? " (clamped)" : "");
-      m_logs.push_back(dbg.str());
-#endif
-    }
-    ++pc;
-    break;
-  }
-
-  case InstructionType::SLEEP: {
-    // SLEEP(X) -> relinquish CPU for X ticks (WAITING)
-    uint32_t ticks = 0;
-    if (!inst.args.empty() && is_number(inst.args[0])) {
-      try {
-        ticks = static_cast<uint32_t>(std::stoul(inst.args[0]));
-      } catch (...) {
-        ticks = 0;
-      }
-    }
-    if (ticks == 0) {
-      ++pc; // zero sleep: just continue
-    } else {
-      m_sleep_remaining = ticks;
-      m_state = ProcessState::WAITING;
-      ++pc; // advance PC so when sleep ends we resume after SLEEP
-    }
-    break;
-  }
-
-  case InstructionType::FOR: {
-    // FOR should have been unrolled in constructor. If encountered, skip
-    // safely.
-    ++pc;
-    break;
-  }
-
-  default:
-    // Unknown instruction: skip
-    ++pc;
-    break;
-  }
-
-  // Increment executed-instruction count (skip FOR)
-  if (inst.type != InstructionType::FOR) {
-    ++m_metrics.executed_instructions;
-  }
-
-#ifdef DEBUG_PROCESS
-  std::ostringstream dbg;
-  dbg << m_name << "[pc=" << pc << "]: " << inst_type_to_string(inst.type);
-  if (!inst.args.empty()) {
-    dbg << "(";
-    for (size_t i = 0; i < inst.args.size(); ++i) {
-      if (i > 0)
-        dbg << ", ";
-      dbg << inst.args[i];
-    }
-    dbg << ")";
-  }
-  m_logs.push_back(dbg.str());
-#endif
-
-  // Set busy-wait delay if configured
-  if (delays_per_exec > 0 && pc <= m_instr.size()) {
-    // Only set delay if more instructions remain
-    m_delay_remaining = delays_per_exec;
-  }
-
-  // If pc reached end after increment
-  if (pc >= m_instr.size()) {
-    m_state = ProcessState::FINISHED;
-    m_metrics.finished_tick = global_tick;
-    m_metrics.finish_time = std::time(nullptr);
-    return ProcessState::FINISHED;
-  }
-
-  return ProcessState::RUNNING;
 }

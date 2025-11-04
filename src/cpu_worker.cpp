@@ -41,8 +41,7 @@ void CPUWorker::join() {
 void CPUWorker::loop() {
   while (running_.load()) {
 
-    while (sched_.is_paused())
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     sched_.tick_barrier_sync();
 
@@ -53,19 +52,18 @@ void CPUWorker::loop() {
     if (!process) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
       sched_.tick_barrier_sync();
+      sched_.tick_barrier_sync();
       continue;
     }
 
-    ProcessState state = process->execute_tick(
-        sched_.current_tick(), sched_.get_scheduler_tick_delay(),
+    ProcessReturnContext context = process->execute_tick(
+        sched_.current_tick(), 
+        sched_.get_scheduler_tick_delay(),
         consumed_ticks);
 
-    if (state == ProcessState::FINISHED) {
-      sched_.release_cpu(this->id_, process, true, false);
-    }
+    if (is_yielded(context)) sched_.release_cpu(this->id_, process, context);
 
     sched_.tick_barrier_sync();
-    // Here, scheduler increases timer. Second tick barrier is essential
-    sched_.tick_barrier_sync();
+    sched_.tick_barrier_sync(); // Here, scheduler increases timer. Second tick barrier is essential
   }
 }
