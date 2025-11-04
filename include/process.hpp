@@ -68,11 +68,12 @@ public:
   uint32_t get_core_id() const;
   uint32_t get_total_instructions() const;
   uint32_t get_executed_instructions() const;
+  uint32_t get_remaining_sleep_ticks() const;
 
   // Execution API used by CPUWorker
   // Returns true if finished after this tick's execution
-  bool execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
-                    uint32_t &consumed_ticks);
+  ProcessState execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
+                            uint32_t &consumed_ticks);
 
 private:
   uint32_t m_id;
