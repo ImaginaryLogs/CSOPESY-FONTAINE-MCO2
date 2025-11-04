@@ -324,21 +324,10 @@ static void set_var_value(const std::string &name, uint16_t v,
 /**
  * Main execution tick - Executes one instruction or handles sleep/delay
  *
- * Process execution states:
- * 1. Sleep state (m_sleep_remaining > 0):
- *    - Decrement counter and stay in WAITING state
- *    - Transition to READY when sleep complete
- * 2. Normal execution:
- *    - Execute one instruction
- *    - Handle delays if delays_per_exec > 0
- * 3. Completion:
- *    - Set FINISHED state when pc reaches end
- *    - Record finished_tick in metrics
- *
  * @param global_tick Current scheduler tick count
  * @param delays_per_exec Number of busy-wait ticks after each instruction
  * @param consumed_ticks Output parameter for ticks used this execution
- * @return true if process finished, false if more work remains
+ * @return ProcessState corresponding
  */
 ProcessState Process::execute_tick(uint32_t global_tick,
                                    uint32_t delays_per_exec,
