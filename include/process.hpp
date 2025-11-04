@@ -72,6 +72,28 @@ public:
   uint32_t get_executed_instructions() const;
   uint32_t get_remaining_sleep_ticks() const;
 
+  // === Sleep Helpers ===
+  void set_sleep_ticks(uint32_t ticks);
+  void clear_sleep();
+
+  // === State Query Helpers ===
+  bool is_new() const noexcept;
+  bool is_ready() const noexcept;
+  bool is_running() const noexcept;
+  bool is_waiting() const noexcept;
+  bool is_finished() const noexcept;
+  bool is_swapped() const noexcept;
+  bool is_blocked() const noexcept;
+
+  // === State Transition Helpers ===
+  void mark_ready();
+  void mark_running();
+  void mark_waiting();
+  void mark_swapped();
+  void mark_finished(uint32_t tick);
+
+  bool has_instructions_remaining() const noexcept;
+
   // Execution API used by CPUWorker
   // Returns the state of the process after this tick's execution
   ProcessState execute_tick(uint32_t global_tick, uint32_t delays_per_exec,

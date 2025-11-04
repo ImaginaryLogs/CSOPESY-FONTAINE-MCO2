@@ -224,6 +224,44 @@ std::vector<std::string> Process::get_logs() {
   return m_logs;
 }
 
+// === State Query Helpers ===
+bool Process::is_new() const noexcept { return m_state == ProcessState::NEW; }
+bool Process::is_ready() const noexcept {
+  return m_state == ProcessState::READY;
+}
+bool Process::is_running() const noexcept {
+  return m_state == ProcessState::RUNNING;
+}
+bool Process::is_waiting() const noexcept {
+  return m_state == ProcessState::WAITING;
+}
+bool Process::is_finished() const noexcept {
+  return m_state == ProcessState::FINISHED;
+}
+bool Process::is_swapped() const noexcept {
+  return m_state == ProcessState::SWAPPED_OUT;
+}
+bool Process::is_blocked() const noexcept {
+  return m_state == ProcessState::BLOCKED_PAGE_FAULT;
+}
+
+// === State Transition Helpers ===
+void Process::mark_ready() { set_state(ProcessState::READY); }
+void Process::mark_running() { set_state(ProcessState::RUNNING); }
+void Process::mark_waiting() { set_state(ProcessState::WAITING); }
+void Process::mark_swapped() { set_state(ProcessState::SWAPPED_OUT); }
+void Process::mark_finished(uint32_t tick) {
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_state = ProcessState::FINISHED;
+  m_metrics.finished_tick = tick;
+  m_metrics.finish_time = std::time(nullptr);
+}
+
+// === Execution Info Helpers ===
+bool Process::has_instructions_remaining() const noexcept {
+  return pc < m_instr.size();
+}
+
 /**
  * Formats a concise single-line summary for screen -ls / report-util
  */
