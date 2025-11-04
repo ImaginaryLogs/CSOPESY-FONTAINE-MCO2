@@ -66,12 +66,14 @@ public:
   std::string get_state_string();
   void set_core_id(uint32_t core);
   uint32_t get_core_id() const;
+
+  // === Helpers ===
   uint32_t get_total_instructions() const;
   uint32_t get_executed_instructions() const;
   uint32_t get_remaining_sleep_ticks() const;
 
   // Execution API used by CPUWorker
-  // Returns true if finished after this tick's execution
+  // Returns the state of the process after this tick's execution
   ProcessState execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
                             uint32_t &consumed_ticks);
 
