@@ -3,7 +3,7 @@
 #include "../include/scheduler.hpp"
 #include <iostream>
 
-#define DEBUG_CPU_WORKER true
+#define DEBUG_CPU_WORKER false
 
 /**
  * NOTE:
@@ -17,7 +17,7 @@ void CPUWorker::start() {
   if (running_.load())
     return;
 #if DEBUG_CPU_WORKER
-  std::cout << "CPUWorker " << id_ << " starting.\n";
+  std::cout << "CPU Worker " << id_ << " starting.\n";
 #endif
 
   running_.store(true);
@@ -26,7 +26,7 @@ void CPUWorker::start() {
 
 void CPUWorker::stop() {
 #if DEBUG_CPU_WORKER
-  std::cout << "CPUWorker " << id_ << " stopping.\n";
+  std::cout << "CPU Worker " << id_ << " stopping.\n";
 #endif
   running_.store(false);
   sched_.stop_barrier_sync();
@@ -61,7 +61,7 @@ void CPUWorker::loop() {
         sched_.get_scheduler_tick_delay(),
         consumed_ticks);
 
-    if (is_yielded(context)) sched_.release_cpu(this->id_, process, context);
+    if (is_yielded(context)) sched_.release_cpu_interrupt(this->id_, process, context);
 
     sched_.tick_barrier_sync();
     sched_.tick_barrier_sync(); // Here, scheduler increases timer. Second tick barrier is essential

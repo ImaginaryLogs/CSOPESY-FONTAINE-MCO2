@@ -70,7 +70,7 @@ ProcessCmpFn fcfs_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
 };
 
 ProcessCmpFn rr_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
-  if (a->last_active_tick == b->last_active_tick) return a->id() > b->id();
+  if (a->last_active_tick == b->last_active_tick) return a->id() < b->id();
   return a->last_active_tick < b->last_active_tick;
 };
 

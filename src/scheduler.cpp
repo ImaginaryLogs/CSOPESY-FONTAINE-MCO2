@@ -3,7 +3,6 @@
 #include "../include/cpu_worker.hpp"
 #include "../include/finished_map.hpp"
 #include "../include/util.hpp"
-#include "../include/channels.hpp"
 #include "cassert"
 #include <iostream>
 #include <functional>
@@ -122,7 +121,7 @@ std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
   return p;
 }
 
-void Scheduler::release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
+void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
 {
   std::lock_guard<std::mutex> lock(short_term_mtx_);
   if (p->is_finished()){
@@ -132,6 +131,17 @@ void Scheduler::release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p, Process
   } else if (p->is_waiting()) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
+    TimerEntry t;
+    t.process = p;
+    uint64_t duration = 0;
+    try {
+        if (!context.args.empty())
+            duration = std::stoull(context.args.at(0)); // ✅ safer than atoi
+    } catch (...) {
+        duration = 0;
+    }
+    t.wake_tick = duration + tick_;
+    sleep_queue_.push(t);
   }
 }
 
@@ -172,7 +182,7 @@ void Scheduler::preemption_check()
 
       // Time to preempt
       ProcessReturnContext interrupt = {ProcessState::READY, {}};
-      release_cpu(cpu_id, running_[cpu_id], interrupt);
+      release_cpu_interrupt(cpu_id, running_[cpu_id], interrupt);
       dispatch_to_cpu(cpu_id);
       cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
     }
@@ -229,7 +239,7 @@ void Scheduler::tick_loop()
 
     {
       std::lock_guard<std::mutex> lock(scheduler_mtx_);
-
+      Scheduler::timer_check();
       Scheduler::preemption_check();                                              // === 1. Preemption ===
       Scheduler::tick_barrier_sync();
 
@@ -254,51 +264,83 @@ void Scheduler::tick_loop()
 
 std::string Scheduler::cpu_state_snapshot(){
   std::ostringstream oss;
-
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  
   for (size_t i = 0; i < running_.size(); ++i){
     auto &proc = running_[i];
     if (proc)
-      oss << " - CPU " << i 
-          << ": PID=" << proc->id()
-          << " RR=" << cpu_quantum_remaining_[i]
-          << " LA=" << proc->last_active_tick
-          << " (" << proc->get_state_string() << ")\n";
+      oss << proc->name() << "\t"
+          << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\t"
+          << "PID=" << proc->id() << "\t"
+          << "RR=" << cpu_quantum_remaining_[i] << "\t"
+          << "LA=" << proc->last_active_tick << "\t"
+          << "Core: " << i << "\t"
+          << proc->get_executed_instructions() << " / "
+          << proc->get_total_instructions() << "\n";
     else
       oss << "  CPU " << i << ": IDLE\n";
   }
   return oss.str();
 }
 
+std::string Scheduler::get_sleep_queue_snapshot() {
+    std::ostringstream oss;
+    if (sleep_queue_.empty()) {
+        oss << "(empty)\n";
+        return oss.str();
+    }
+
+    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> copy = sleep_queue_;
+
+    while (!copy.empty()) {
+        const TimerEntry& entry = copy.top();
+        if (entry.process) {
+            oss << entry.process->name()
+                << " | " << entry.wake_tick
+                << "\n";
+        } else {
+            oss << "(null process) | tick " << entry.wake_tick << "\n"; // ??
+        }
+        copy.pop();
+    }
+    oss << "\n";
+  return oss.str();
+}
+
 std::string Scheduler::snapshot() {
   std::ostringstream oss;
-  oss << "=== Scheduler Snapshot ===\n";
+  oss << "=== Scheduler Snapshot ===| ---\n";
   oss << "Tick: " << tick_.load() << "\n";
   oss << "Paused: " << (paused_.load() ? "true" : "false") << "\n";
 
+  oss << "[Sleep Queue]\n"
+      << (((sleep_queue_.empty()))
+        ? " (empty)\n"
+        : get_sleep_queue_snapshot());
+
   // --- Job Queue ---
-  oss << "[Job Queue]\n";
-  oss << job_queue_.isEmpty() 
-        ? "  (empty)\n" 
-        : job_queue_.snapshot();
+  oss << "[Job Queue]\n"
+      << ((job_queue_.isEmpty())
+        ? " (empty)\n" 
+        : job_queue_.snapshot());
 
   // --- Ready Queue ---
-  oss << "\n[Ready Queue]\n";
-  oss << ready_queue_.isEmpty() 
+  oss << "[Ready Queue]\n";
+  oss << (ready_queue_.isEmpty() 
         ? "  (empty)\n" 
-        : ready_queue_.snapshot();;
+        : ready_queue_.snapshot());
   
   // --- CPU States ---
-  oss << "\n[CPU States]\n";
+  oss << "\n[CPU States]:\n";
   oss << cpu_state_snapshot();  
 
   // --- Finished ---
-  oss << "\n[Finished Processes]\n";
-  bool any_finished = false;
+  oss << "[Finished Processes]:\n";
   std::string finished_snapshot = finished_.snapshot();
-  
-  oss << (finished_snapshot.empty()) 
+  oss << ((finished_snapshot.empty()) 
         ? " (none)\n"
-        : finished_snapshot;
+        : finished_snapshot);
 
   oss << "===========================\n";
 

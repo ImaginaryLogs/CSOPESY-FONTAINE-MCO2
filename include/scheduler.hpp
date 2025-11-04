@@ -48,7 +48,7 @@ public:
 
   // === Short-Term Scheduling API ===
   std::shared_ptr<Process> dispatch_to_cpu(uint32_t cpu_id);
-  void release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
+  void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
   
   // === Pre-Post Scheduling API ===
   void sleep_process(std::shared_ptr<Process> p, uint64_t duration);
@@ -74,6 +74,8 @@ public:
   uint32_t get_scheduler_tick_delay() const;
   std::string get_sched_snapshots();
   void setSchedulingPolicy(SchedulingPolicy policy_);
+  std::string get_sleep_queue_snapshot();
+
 
 private:
   // === Scheduler Internal Methods ===

@@ -73,6 +73,7 @@ public:
   std::string get_state_string();
   void set_core_id(uint32_t core);
   uint32_t get_core_id() const;
+  void set_name(std::string);
 
   // === Helpers ===
   uint32_t get_total_instructions() const;
