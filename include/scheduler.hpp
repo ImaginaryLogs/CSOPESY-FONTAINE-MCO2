@@ -1,6 +1,7 @@
 #pragma once
 #include "config.hpp"
 #include "process.hpp"
+#include "finished_map.hpp"
 #include "cpu_worker.hpp"
 #include <atomic>
 #include <condition_variable>
@@ -47,7 +48,7 @@ public:
 
   // === Short-Term Scheduling API ===
   std::shared_ptr<Process> dispatch_to_cpu(uint32_t cpu_id);
-  void release_cpu(uint32_t cpu_id, std::shared_ptr<Process> p, bool finished, bool yielded);
+  void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
   
   // === Pre-Post Scheduling API ===
   void sleep_process(std::shared_ptr<Process> p, uint64_t duration);
@@ -73,6 +74,8 @@ public:
   uint32_t get_scheduler_tick_delay() const;
   std::string get_sched_snapshots();
   void setSchedulingPolicy(SchedulingPolicy policy_);
+  std::string get_sleep_queue_snapshot();
+
 
 private:
   // === Scheduler Internal Methods ===
@@ -96,6 +99,7 @@ private:
   std::mutex scheduler_mtx_;
   std::unique_ptr<std::barrier<>> tick_sync_barrier_;
   Channel<std::string> log_queue;
+  std::string cpu_state_snapshot();
   
   // === Queues ===
   Channel<std::shared_ptr<Process>> job_queue_;                                           // new processes, for long-term scheduler
@@ -107,7 +111,7 @@ private:
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
   std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
-  std::vector<std::shared_ptr<Process>> finished_;      // finished processes, indexed by cpu id
+  FinishedMap finished_;      // finished processes, indexed by cpu id
   
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks

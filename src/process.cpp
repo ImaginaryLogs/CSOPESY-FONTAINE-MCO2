@@ -33,6 +33,8 @@ static std::string inst_type_to_string(InstructionType type) {
   }
 }
 
+
+
 /**
  * Convert process state enum to readable string
  */
@@ -208,6 +210,10 @@ void Process::set_core_id(uint32_t core) {
   m_metrics.core_id = core;
 }
 
+void Process::set_name(std::string name){
+  this->m_name = name;
+}
+
 uint32_t Process::get_core_id() const { return m_metrics.core_id; }
 uint32_t Process::get_total_instructions() const {
   return m_metrics.total_instructions;
@@ -225,7 +231,9 @@ std::vector<std::string> Process::get_logs() {
 }
 
 // === State Query Helpers ===
-bool Process::is_new() const noexcept { return m_state == ProcessState::NEW; }
+bool Process::is_new() const noexcept { 
+  return m_state == ProcessState::NEW; 
+}
 bool Process::is_ready() const noexcept {
   return m_state == ProcessState::READY;
 }
@@ -243,6 +251,13 @@ bool Process::is_swapped() const noexcept {
 }
 bool Process::is_blocked() const noexcept {
   return m_state == ProcessState::BLOCKED_PAGE_FAULT;
+}
+
+bool is_yielded(ProcessReturnContext context) noexcept {
+  return context.state == ProcessState::READY ||
+         context.state == ProcessState::WAITING ||
+         context.state == ProcessState::FINISHED ||
+         context.state == ProcessState::BLOCKED_PAGE_FAULT;
 }
 
 // === State Transition Helpers ===
@@ -367,7 +382,7 @@ static void set_var_value(const std::string &name, uint16_t v,
  * @param consumed_ticks Output parameter for ticks used this execution
  * @return ProcessState corresponding
  */
-ProcessState Process::execute_tick(uint32_t global_tick,
+ProcessReturnContext Process::execute_tick(uint32_t global_tick,
                                    uint32_t delays_per_exec,
                                    uint32_t &consumed_ticks) {
   consumed_ticks = 1; // default one tick consumed
@@ -377,7 +392,7 @@ ProcessState Process::execute_tick(uint32_t global_tick,
   if (m_delay_remaining > 0) {
     --m_delay_remaining;
     m_state = ProcessState::RUNNING;
-    return ProcessState::RUNNING;
+    return {ProcessState::RUNNING, {}};
   }
 
   // --- Case 2: Finished already ---
@@ -388,7 +403,7 @@ ProcessState Process::execute_tick(uint32_t global_tick,
         << " (finished at " << m_metrics.finished_tick << ")";
     m_logs.push_back(dbg.str());
 #endif
-    return ProcessState::FINISHED;
+    return {ProcessState::FINISHED, {}};
   }
 
   // --- Case 3: Currently sleeping ---
@@ -403,10 +418,10 @@ ProcessState Process::execute_tick(uint32_t global_tick,
 #endif
     if (m_sleep_remaining == 0) {
       m_state = ProcessState::READY;
-      return ProcessState::READY; // wakes up, can be rescheduled
+      return {ProcessState::READY, {}}; // wakes up, can be rescheduled
     } else {
       m_state = ProcessState::WAITING;
-      return ProcessState::WAITING; // still sleeping, yield CPU
+      return {ProcessState::WAITING, {std::to_string(m_sleep_remaining)}}; // still sleeping, yield CPU
     }
   }
 
@@ -415,7 +430,7 @@ ProcessState Process::execute_tick(uint32_t global_tick,
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return ProcessState::FINISHED;
+    return {ProcessState::FINISHED, std::vector<std::string>()};
   }
 
   // --- Case 5: Execute instruction normally ---
@@ -517,6 +532,8 @@ ProcessState Process::execute_tick(uint32_t global_tick,
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
       ++pc; // advance PC so when sleep ends we resume after SLEEP
+
+      return {ProcessState::WAITING, {std::to_string(ticks)}};
     }
     break;
   }
@@ -565,8 +582,8 @@ ProcessState Process::execute_tick(uint32_t global_tick,
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return ProcessState::FINISHED;
+    return {ProcessState::FINISHED, {}};
   }
 
-  return ProcessState::RUNNING;
+  return {ProcessState::RUNNING, {}};
 }

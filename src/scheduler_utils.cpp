@@ -7,7 +7,6 @@
 
 void Scheduler::initialize_vectors() {
   this->running_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
-  this->finished_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
   this->busy_ticks_per_cpu_ = std::vector<uint64_t>(cfg_.num_cpu, 0);
   this->cpu_quantum_remaining_ = std::vector<uint32_t>(cfg_.num_cpu, cfg_.quantum_cycles - 1);
 }
@@ -71,7 +70,7 @@ ProcessCmpFn fcfs_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
 };
 
 ProcessCmpFn rr_cmp = [](const ProcessPtr &a, const ProcessPtr &b) {
-  if (a->last_active_tick == b->last_active_tick) return a->id() > b->id();
+  if (a->last_active_tick == b->last_active_tick) return a->id() < b->id();
   return a->last_active_tick < b->last_active_tick;
 };
 
