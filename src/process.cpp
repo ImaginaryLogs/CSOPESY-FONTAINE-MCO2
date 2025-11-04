@@ -215,6 +215,9 @@ uint32_t Process::get_total_instructions() const {
 uint32_t Process::get_executed_instructions() const {
   return m_metrics.executed_instructions;
 }
+uint32_t Process::get_remaining_sleep_ticks() const {
+  return m_sleep_remaining;
+}
 
 std::vector<std::string> Process::get_logs() {
   std::lock_guard<std::mutex> lk(m_mutex);
@@ -337,19 +340,20 @@ static void set_var_value(const std::string &name, uint16_t v,
  * @param consumed_ticks Output parameter for ticks used this execution
  * @return true if process finished, false if more work remains
  */
-bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
-                           uint32_t &consumed_ticks) {
+ProcessState Process::execute_tick(uint32_t global_tick,
+                                   uint32_t delays_per_exec,
+                                   uint32_t &consumed_ticks) {
   consumed_ticks = 1; // default one tick consumed
   std::lock_guard<std::mutex> lk(m_mutex);
 
-  // Handle busy-wait delay (simulates CPU hold cycles)
+  // --- Case 1: Delay / busy wait ---
   if (m_delay_remaining > 0) {
     --m_delay_remaining;
-    m_state = ProcessState::RUNNING; // stays running but not executing new inst
-    consumed_ticks = 1;
-    return false;
+    m_state = ProcessState::RUNNING;
+    return ProcessState::RUNNING;
   }
 
+  // --- Case 2: Finished already ---
   if (m_state == ProcessState::FINISHED) {
 #ifdef DEBUG_PROCESS
     std::ostringstream dbg;
@@ -357,40 +361,38 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
         << " (finished at " << m_metrics.finished_tick << ")";
     m_logs.push_back(dbg.str());
 #endif
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  // If currently sleeping due to SLEEP instruction
+  // --- Case 3: Currently sleeping ---
   if (m_sleep_remaining > 0) {
-    // sleeping is WAITING and consumes 1 tick per call
     --m_sleep_remaining;
-    ProcessState new_state =
-        (m_sleep_remaining == 0) ? ProcessState::READY : ProcessState::WAITING;
 #ifdef DEBUG_PROCESS
-    if (new_state != m_state) {
+    {
       std::ostringstream dbg;
-      dbg << m_name << ": State "
-          << (m_state == ProcessState::WAITING ? "WAITING" : "RUNNING")
-          << " -> " << (new_state == ProcessState::READY ? "READY" : "WAITING")
-          << " (sleep=" << m_sleep_remaining << ")";
+      dbg << m_name << ": Sleeping, remaining=" << m_sleep_remaining;
       m_logs.push_back(dbg.str());
     }
 #endif
-    m_state = new_state;
-    return false;
+    if (m_sleep_remaining == 0) {
+      m_state = ProcessState::READY;
+      return ProcessState::READY; // wakes up, can be rescheduled
+    } else {
+      m_state = ProcessState::WAITING;
+      return ProcessState::WAITING; // still sleeping, yield CPU
+    }
   }
 
-  // If no instructions left
+  // --- Case 4: Out of instructions ---
   if (pc >= m_instr.size()) {
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  // Mark running
+  // --- Case 5: Execute instruction normally ---
   m_state = ProcessState::RUNNING;
-
   const Instruction &inst = m_instr[pc];
 
   switch (inst.type) {
@@ -488,7 +490,6 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
       ++pc; // advance PC so when sleep ends we resume after SLEEP
-      
     }
     break;
   }
@@ -507,8 +508,9 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   }
 
   // Increment executed-instruction count (skip FOR)
-  if (inst.type != InstructionType::FOR)
+  if (inst.type != InstructionType::FOR) {
     ++m_metrics.executed_instructions;
+  }
 
 #ifdef DEBUG_PROCESS
   std::ostringstream dbg;
@@ -536,8 +538,8 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  return false;
+  return ProcessState::RUNNING;
 }
