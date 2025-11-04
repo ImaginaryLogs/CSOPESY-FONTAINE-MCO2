@@ -9,8 +9,8 @@ TARGET := $(BUILD_DIR)/app
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
-# test target name (no .cpp extension)
-TEST := test_scheduler
+# Test configuration (can override with TEST=name)
+TEST ?= test_process
 TEST_SRC := tests/$(TEST).cpp
 TEST_BIN := $(BUILD_DIR)/$(TEST)
 
@@ -31,7 +31,7 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 # Test build and run
-test: $(TEST_BIN) $(SRC_DIR)
+test: $(TEST_BIN)
 	./$(TEST_BIN)
 
 $(TEST_BIN): $(TEST_SRC) | $(BUILD_DIR)
