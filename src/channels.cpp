@@ -37,7 +37,7 @@ bool Channel<T>::isEmpty() {
 template<typename T>
 void Channel<T>::empty(){
   std::lock_guard<std::mutex> lock(messageMtx_);
-  q_.empty();
+  (void)q_.empty();
   return;
 }
 
