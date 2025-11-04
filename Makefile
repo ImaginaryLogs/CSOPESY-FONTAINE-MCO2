@@ -13,8 +13,8 @@ SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
 # Test configuration (can override with TEST=name)
-TEST ?= test_process
-TEST_SRC := tests/$(TEST).cpp
+TEST ?= scheduler
+TEST_SRC := tests/test_$(TEST).cpp
 TEST_BIN := $(BUILD_DIR)/$(TEST)
 
 .PHONY: all run test clean rebuild
