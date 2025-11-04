@@ -215,10 +215,51 @@ uint32_t Process::get_total_instructions() const {
 uint32_t Process::get_executed_instructions() const {
   return m_metrics.executed_instructions;
 }
+uint32_t Process::get_remaining_sleep_ticks() const {
+  return m_sleep_remaining;
+}
 
 std::vector<std::string> Process::get_logs() {
   std::lock_guard<std::mutex> lk(m_mutex);
   return m_logs;
+}
+
+// === State Query Helpers ===
+bool Process::is_new() const noexcept { return m_state == ProcessState::NEW; }
+bool Process::is_ready() const noexcept {
+  return m_state == ProcessState::READY;
+}
+bool Process::is_running() const noexcept {
+  return m_state == ProcessState::RUNNING;
+}
+bool Process::is_waiting() const noexcept {
+  return m_state == ProcessState::WAITING;
+}
+bool Process::is_finished() const noexcept {
+  return m_state == ProcessState::FINISHED;
+}
+bool Process::is_swapped() const noexcept {
+  return m_state == ProcessState::SWAPPED_OUT;
+}
+bool Process::is_blocked() const noexcept {
+  return m_state == ProcessState::BLOCKED_PAGE_FAULT;
+}
+
+// === State Transition Helpers ===
+void Process::mark_ready() { set_state(ProcessState::READY); }
+void Process::mark_running() { set_state(ProcessState::RUNNING); }
+void Process::mark_waiting() { set_state(ProcessState::WAITING); }
+void Process::mark_swapped() { set_state(ProcessState::SWAPPED_OUT); }
+void Process::mark_finished(uint32_t tick) {
+  std::lock_guard<std::mutex> lk(m_mutex);
+  m_state = ProcessState::FINISHED;
+  m_metrics.finished_tick = tick;
+  m_metrics.finish_time = std::time(nullptr);
+}
+
+// === Execution Info Helpers ===
+bool Process::has_instructions_remaining() const noexcept {
+  return pc < m_instr.size();
 }
 
 /**
@@ -321,35 +362,25 @@ static void set_var_value(const std::string &name, uint16_t v,
 /**
  * Main execution tick - Executes one instruction or handles sleep/delay
  *
- * Process execution states:
- * 1. Sleep state (m_sleep_remaining > 0):
- *    - Decrement counter and stay in WAITING state
- *    - Transition to READY when sleep complete
- * 2. Normal execution:
- *    - Execute one instruction
- *    - Handle delays if delays_per_exec > 0
- * 3. Completion:
- *    - Set FINISHED state when pc reaches end
- *    - Record finished_tick in metrics
- *
  * @param global_tick Current scheduler tick count
  * @param delays_per_exec Number of busy-wait ticks after each instruction
  * @param consumed_ticks Output parameter for ticks used this execution
- * @return true if process finished, false if more work remains
+ * @return ProcessState corresponding
  */
-bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
-                           uint32_t &consumed_ticks) {
+ProcessState Process::execute_tick(uint32_t global_tick,
+                                   uint32_t delays_per_exec,
+                                   uint32_t &consumed_ticks) {
   consumed_ticks = 1; // default one tick consumed
   std::lock_guard<std::mutex> lk(m_mutex);
 
-  // Handle busy-wait delay (simulates CPU hold cycles)
+  // --- Case 1: Delay / busy wait ---
   if (m_delay_remaining > 0) {
     --m_delay_remaining;
-    m_state = ProcessState::RUNNING; // stays running but not executing new inst
-    consumed_ticks = 1;
-    return false;
+    m_state = ProcessState::RUNNING;
+    return ProcessState::RUNNING;
   }
 
+  // --- Case 2: Finished already ---
   if (m_state == ProcessState::FINISHED) {
 #ifdef DEBUG_PROCESS
     std::ostringstream dbg;
@@ -357,40 +388,38 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
         << " (finished at " << m_metrics.finished_tick << ")";
     m_logs.push_back(dbg.str());
 #endif
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  // If currently sleeping due to SLEEP instruction
+  // --- Case 3: Currently sleeping ---
   if (m_sleep_remaining > 0) {
-    // sleeping is WAITING and consumes 1 tick per call
     --m_sleep_remaining;
-    ProcessState new_state =
-        (m_sleep_remaining == 0) ? ProcessState::READY : ProcessState::WAITING;
 #ifdef DEBUG_PROCESS
-    if (new_state != m_state) {
+    {
       std::ostringstream dbg;
-      dbg << m_name << ": State "
-          << (m_state == ProcessState::WAITING ? "WAITING" : "RUNNING")
-          << " -> " << (new_state == ProcessState::READY ? "READY" : "WAITING")
-          << " (sleep=" << m_sleep_remaining << ")";
+      dbg << m_name << ": Sleeping, remaining=" << m_sleep_remaining;
       m_logs.push_back(dbg.str());
     }
 #endif
-    m_state = new_state;
-    return false;
+    if (m_sleep_remaining == 0) {
+      m_state = ProcessState::READY;
+      return ProcessState::READY; // wakes up, can be rescheduled
+    } else {
+      m_state = ProcessState::WAITING;
+      return ProcessState::WAITING; // still sleeping, yield CPU
+    }
   }
 
-  // If no instructions left
+  // --- Case 4: Out of instructions ---
   if (pc >= m_instr.size()) {
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  // Mark running
+  // --- Case 5: Execute instruction normally ---
   m_state = ProcessState::RUNNING;
-
   const Instruction &inst = m_instr[pc];
 
   switch (inst.type) {
@@ -488,7 +517,6 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
       ++pc; // advance PC so when sleep ends we resume after SLEEP
-      
     }
     break;
   }
@@ -507,8 +535,9 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
   }
 
   // Increment executed-instruction count (skip FOR)
-  if (inst.type != InstructionType::FOR)
+  if (inst.type != InstructionType::FOR) {
     ++m_metrics.executed_instructions;
+  }
 
 #ifdef DEBUG_PROCESS
   std::ostringstream dbg;
@@ -536,8 +565,8 @@ bool Process::execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
     m_state = ProcessState::FINISHED;
     m_metrics.finished_tick = global_tick;
     m_metrics.finish_time = std::time(nullptr);
-    return true;
+    return ProcessState::FINISHED;
   }
 
-  return false;
+  return ProcessState::RUNNING;
 }

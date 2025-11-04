@@ -66,13 +66,38 @@ public:
   std::string get_state_string();
   void set_core_id(uint32_t core);
   uint32_t get_core_id() const;
+
+  // === Helpers ===
   uint32_t get_total_instructions() const;
   uint32_t get_executed_instructions() const;
+  uint32_t get_remaining_sleep_ticks() const;
+
+  // === Sleep Helpers ===
+  void set_sleep_ticks(uint32_t ticks);
+  void clear_sleep();
+
+  // === State Query Helpers ===
+  bool is_new() const noexcept;
+  bool is_ready() const noexcept;
+  bool is_running() const noexcept;
+  bool is_waiting() const noexcept;
+  bool is_finished() const noexcept;
+  bool is_swapped() const noexcept;
+  bool is_blocked() const noexcept;
+
+  // === State Transition Helpers ===
+  void mark_ready();
+  void mark_running();
+  void mark_waiting();
+  void mark_swapped();
+  void mark_finished(uint32_t tick);
+
+  bool has_instructions_remaining() const noexcept;
 
   // Execution API used by CPUWorker
-  // Returns true if finished after this tick's execution
-  bool execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
-                    uint32_t &consumed_ticks);
+  // Returns the state of the process after this tick's execution
+  ProcessState execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
+                            uint32_t &consumed_ticks);
 
 private:
   uint32_t m_id;
