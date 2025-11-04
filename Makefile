@@ -1,11 +1,14 @@
+# Compiler and flags
 CXX := g++
 CXXFLAGS := -std=c++20 -Wall -pthread -O2
 INCLUDE := -I include
 
+# Directories
 SRC_DIR := src
 BUILD_DIR := build
 TARGET := $(BUILD_DIR)/app
 
+# Sources and objects
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
