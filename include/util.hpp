@@ -171,3 +171,22 @@ struct TimerEntry {
   }
 };
 
+struct TimerEntryCompare {
+    bool operator()(const TimerEntry& a, const TimerEntry& b) const noexcept {
+        return a.wake_tick > b.wake_tick; // min-heap: smallest wake_tick first
+    }
+};
+
+
+class TimerEntrySleepQueue {
+  public:
+    std::vector<TimerEntry> get_sleep_queue_snapshot() const;
+    std::string print_sleep_queue() const;
+    void send(std::shared_ptr<Process> p, uint64_t wake_tick);
+    TimerEntry receive();
+    bool isEmpty();
+    TimerEntry top();
+  private:
+    std::priority_queue<TimerEntry> sleep_queue_;
+    mutable std::mutex sleep_queue_mtx_;
+};

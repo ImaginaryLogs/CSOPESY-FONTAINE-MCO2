@@ -284,30 +284,6 @@ std::string Scheduler::cpu_state_snapshot(){
   return oss.str();
 }
 
-std::string Scheduler::get_sleep_queue_snapshot() {
-    std::ostringstream oss;
-    if (sleep_queue_.empty()) {
-        oss << "(empty)\n";
-        return oss.str();
-    }
-
-    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> copy = sleep_queue_;
-
-    while (!copy.empty()) {
-        const TimerEntry& entry = copy.top();
-        if (entry.process) {
-            oss << entry.process->name()
-                << " | " << entry.wake_tick
-                << "\n";
-        } else {
-            oss << "(null process) | tick " << entry.wake_tick << "\n"; // ??
-        }
-        copy.pop();
-    }
-    oss << "\n";
-  return oss.str();
-}
-
 std::string Scheduler::snapshot() {
   std::ostringstream oss;
   oss << "=== Scheduler Snapshot ===| ---\n";
@@ -315,7 +291,7 @@ std::string Scheduler::snapshot() {
   oss << "Paused: " << (paused_.load() ? "true" : "false") << "\n";
 
   oss << "[Sleep Queue]\n"
-      << (((sleep_queue_.empty()))
+      << (((sleep_queue_.isEmpty()))
         ? " (empty)\n"
         : get_sleep_queue_snapshot());
 
@@ -345,4 +321,60 @@ std::string Scheduler::snapshot() {
   oss << "===========================\n";
 
   return oss.str();
+}
+
+
+std::vector<TimerEntry> TimerEntrySleepQueue::get_sleep_queue_snapshot() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+
+    // Make a shallow copy of the priority_queue’s contents safely
+    auto copy = sleep_queue_;
+    std::vector<TimerEntry> snapshot;
+    while (!copy.empty()) {
+        snapshot.push_back(copy.top());
+        copy.pop();
+    }
+    return snapshot;
+}
+
+std::string TimerEntrySleepQueue::print_sleep_queue() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    std::priority_queue<TimerEntry> copy = sleep_queue_;
+    std::ostringstream oss;
+    while (!copy.empty()) {
+        const auto &t = copy.top();
+        if (t.process)
+            oss << t.process->name()
+                << "\tPID:" << t.process->id() << "\tWT " << t.wake_tick << "\n";
+        else
+            oss<< "  [NULL process] wakes at " << t.wake_tick << "\n";
+        copy.pop();
+    }
+    return oss.str();
+}
+
+void TimerEntrySleepQueue::send(std::shared_ptr<Process> p, uint64_t wake_tick) {
+    if (!p) {
+        std::cerr << "[ERROR] Tried to queue null process for sleep\n";
+        return;
+    }
+    // Adding a sleeping process
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    TimerEntry t{p, wake_tick};
+    sleep_queue_.push(t);
+}
+
+TimerEntry TimerEntrySleepQueue::receive(){
+  std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+  sleep_queue_.pop();
+};
+
+bool TimerEntrySleepQueue::isEmpty(){
+  std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+  return sleep_queue_.empty();
+}
+
+TimerEntry TimerEntrySleepQueue::top(){
+  std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+  return sleep_queue_.top();
 }
