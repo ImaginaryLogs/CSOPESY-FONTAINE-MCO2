@@ -358,6 +358,26 @@ void ProcessGenerator::stop() {
     thread_.join();
 }
 
+/**
+ * Main generator thread loop
+ *
+ * Revised:
+ * - batch_process_freq is measured in CPU cycles (scheduler ticks), not
+ * milliseconds.
+ * - This loop now synchronizes process generation with the scheduler’s tick
+ * counter.
+ *
+ * Behavior:
+ *   Every `batch_process_freq` scheduler ticks, this thread generates one new
+ * process. Each process is constructed with a random number of instructions
+ * (within [min_ins, max_ins]), constrained by the configured
+ * max_unrolled_instructions budget.
+ *
+ * Thread Safety:
+ * - Runs in a dedicated background thread.
+ * - Polls the scheduler’s current tick safely (no blocking interaction).
+ * - Uses atomic flag `running_` for coordinated shutdown.
+ */
 void ProcessGenerator::loop() {
   uint32_t last_generated_tick = 0;
 
