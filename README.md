@@ -112,7 +112,7 @@ Requirements: C++20 compiler (barrier requires modern libstdc++/MSVC), standard 
 ### 3.1. Windows (MSYS2 UCRT64)
 
 #### MSYS2 UCRT64
-> g++ -std=c++20 -Iinclude   src/cli.cpp src/reporter.cpp src/screen.cpp   src/cpu_worker.cpp src/process.cpp   src/scheduler.cpp src/scheduler_utils.cpp   src/process_generator.cpp src/main.cpp   -o csopesy.exe
+> g++ -std=c++20 -O2 -pthread -Iinclude src/*.cpp -o csopesy
 
 ## 4. Run
 
