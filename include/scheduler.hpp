@@ -57,7 +57,7 @@ public:
   // === Diagnostics ===
   std::string snapshot(); // returns screen-ls string
   uint32_t current_tick() const;
-
+  std::string cpu_utilization();
   // === Singleton Accessor ===
   Scheduler(Scheduler &other) = delete;       // Should not be copied
   void operator=(const Scheduler &) = delete; // Should not be assigned

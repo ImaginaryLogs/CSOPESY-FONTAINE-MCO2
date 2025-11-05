@@ -146,6 +146,14 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
   }
 }
 
+std::string Scheduler::cpu_utilization(){
+  std::string message = "";
+  uint16_t utilize = 0;
+
+  for (const auto runner : running_)
+    if (runner) ++utilize;
+  return std::to_string((utilize / this->cfg_.num_cpu ) * 100)+"%";
+}
 
 
 void Scheduler::short_term_dispatch(){ 

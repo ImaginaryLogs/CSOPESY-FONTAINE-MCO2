@@ -163,7 +163,7 @@ void test_sleep(){
   // --- Configure scheduler ---
   Config cfg;
   cfg.num_cpu = 1;              // single CPU for deterministic test
-  cfg.scheduler_tick_delay = 0; // fast ticks
+  cfg.scheduler_tick_delay = 1; // fast ticks
   cfg.quantum_cycles = 1;
   cfg.snapshot_cooldown = 1;
   cfg.scheduler = SchedulingPolicy::RR;
@@ -212,7 +212,7 @@ void test_sleep(){
   }
   // --- Verify RR ---
   std::cout << "Verifying RR execution order.\n";
-
+//
   // Interleaved logs (RR quantum = 1 tick per execute_tick)
   // Each process should have at least one instruction executed
   assert(logs_p1.size() >= 1);

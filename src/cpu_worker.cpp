@@ -3,7 +3,7 @@
 #include "../include/scheduler.hpp"
 #include <iostream>
 
-#define DEBUG_CPU_WORKER false
+#define DEBUG_CPU_WORKER true
 
 /**
  * NOTE:
@@ -41,7 +41,7 @@ void CPUWorker::join() {
 void CPUWorker::loop() {
   while (running_.load()) {
 
-    while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     sched_.tick_barrier_sync();
 
@@ -49,13 +49,17 @@ void CPUWorker::loop() {
 
     uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
 
+    #if DEBUG_CPU_WORKER
+    std::cout << "CPU Worker executing for CORE " << this->id_ << " at tick \n";
+    #endif
+
     if (!process) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      sched_.tick_barrier_sync();
       sched_.tick_barrier_sync();
       sched_.tick_barrier_sync();
       continue;
     }
-
+    
     ProcessReturnContext context = process->execute_tick(
         sched_.current_tick(), 
         sched_.get_scheduler_tick_delay(),
