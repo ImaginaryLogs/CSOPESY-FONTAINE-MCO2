@@ -145,7 +145,7 @@ void test_sleep(){
 // --- Create simple processes ---
   std::vector<Instruction> instr1 = {
       {InstructionType::PRINT, {"P1-1"}},
-      {InstructionType::PRINT, {"P1-2"}},
+      {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
   std::vector<Instruction> instr2 = { 
       {InstructionType::PRINT, {"P2-1"}},
@@ -153,7 +153,7 @@ void test_sleep(){
       {InstructionType::PRINT, {"P2-3"}}};
   std::vector<Instruction> instr3 = { 
       {InstructionType::PRINT, {"P2-1"}},
-      {InstructionType::PRINT, {"P2-2"}},
+      {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
 
   auto p1 = std::make_shared<Process>(1, "P1", instr1);

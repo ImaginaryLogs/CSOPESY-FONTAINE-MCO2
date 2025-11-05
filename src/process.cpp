@@ -532,7 +532,26 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
       ++pc; // advance PC so when sleep ends we resume after SLEEP
+      
 
+      // Increment executed-instruction count (skip FOR)
+      if (inst.type != InstructionType::FOR) {
+        ++m_metrics.executed_instructions;
+      }
+
+      // Set busy-wait delay if configured
+      if (delays_per_exec > 0 && pc <= m_instr.size()) {
+        // Only set delay if more instructions remain
+        m_delay_remaining = delays_per_exec;
+      }
+
+      // If pc reached end after increment
+      if (pc >= m_instr.size()) {
+        m_state = ProcessState::FINISHED;
+        m_metrics.finished_tick = global_tick;
+        m_metrics.finish_time = std::time(nullptr);
+        return {ProcessState::FINISHED, {}};
+      }
       return {ProcessState::WAITING, {std::to_string(ticks)}};
     }
     break;
