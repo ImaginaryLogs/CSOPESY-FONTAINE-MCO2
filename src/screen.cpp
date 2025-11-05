@@ -1,31 +1,33 @@
 #include "../include/screen.hpp"
+#include "../include/reporter.hpp"
+#include "../include/scheduler.hpp"
+#include <sstream>
 
-/**
- * NOTE:
- * This is just a skeleton that CJ created to get things going.
- * Feel free to add/remove/revise anything.
- */
+ScreenManager::ScreenManager() = default;
 
-ScreenManager::ScreenManager() {}
-
-bool ScreenManager::create_screen(const std::string &name,
-                                  std::shared_ptr<Process> p) {
+// Create a new screen entry if it doesn't already exist
+bool ScreenManager::create_screen(const std::string &name, std::shared_ptr<Process> p) {
+  
   std::lock_guard<std::mutex> lock(mtx_);
-  if (screens_.find(name) != screens_.end()) {
+
+  if (screens_.contains(name))
     return false;
-  }
-  screens_[name] = p;
+
+  screens_[name] = std::move(p);
+
   return true;
 }
 
+// Find an existing screen by name
 std::shared_ptr<Process> ScreenManager::find(const std::string &name) {
+
   std::lock_guard<std::mutex> lock(mtx_);
   auto it = screens_.find(name);
-  return it != screens_.end() ? it->second : nullptr;
+
+  return (it != screens_.end()) ? it->second : nullptr;
 }
 
+// Placeholder, listing handled by reporter via Scheduler::snapshot()
 std::string ScreenManager::list_summary() {
-  std::lock_guard<std::mutex> lock(mtx_);
-  // TODO: Implement proper summary
-  return "";
+  return {};
 }

@@ -163,7 +163,7 @@ void test_sleep(){
   // --- Configure scheduler ---
   Config cfg;
   cfg.num_cpu = 1;              // single CPU for deterministic test
-  cfg.scheduler_tick_delay = 1; // fast ticks
+  cfg.scheduler_tick_delay = 0; // fast ticks
   cfg.quantum_cycles = 1;
   cfg.snapshot_cooldown = 1;
   cfg.scheduler = SchedulingPolicy::RR;
@@ -175,7 +175,7 @@ void test_sleep(){
   std::cout << "Submitting processes P1 and P2.\n";
 
   sched.submit_process(p1);
-  sched.submit_process(p2);
+  sched.submit_process(p2); 
   sched.submit_process(p3);
   sched.setSchedulingPolicy(SchedulingPolicy::RR);
 
