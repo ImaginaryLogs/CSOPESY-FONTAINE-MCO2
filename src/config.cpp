@@ -14,6 +14,7 @@ static std::string trim(std::string s) {
 Config load_config(const std::string &path) {
 
   Config cfg{};
+  cfg.scheduler_tick_delay = 0;
   std::ifstream in(path);
 
   if (!in) {

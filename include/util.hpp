@@ -11,6 +11,7 @@
 #include "config.hpp"
 #include "process.hpp"
 #include "util.hpp"
+#include <cassert>
 
 uint16_t clamp_uint16(int64_t v);
 std::string now_iso();
@@ -163,11 +164,17 @@ class DynamicVictimChannel {
 
 // An Entry of a Process for the Timer to check
 struct TimerEntry {
-  std::shared_ptr<Process> process;
-  uint64_t wake_tick;
-  
-  inline bool operator>(const TimerEntry& other) const {
-      return wake_tick > other.wake_tick;
-  }
+    std::shared_ptr<Process> process;
+    uint64_t wake_tick;
+
+    TimerEntry(std::shared_ptr<Process> p, uint64_t tick)
+        : process(std::move(p)), wake_tick(tick) {}
+
+    TimerEntry() : process(nullptr), wake_tick(0) {}
 };
 
+struct TimerEntryCompare {
+    bool operator()(const TimerEntry& a, const TimerEntry& b) const noexcept {
+        return a.wake_tick > b.wake_tick; // min-heap: smallest wake_tick first
+    }
+};

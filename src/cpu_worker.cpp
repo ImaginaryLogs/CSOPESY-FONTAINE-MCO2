@@ -64,7 +64,7 @@ void CPUWorker::loop() {
         sched_.current_tick(), 
         sched_.get_scheduler_tick_delay(),
         consumed_ticks);
-    std::cout << "Tick "<< sched_.current_tick() << " inst: " << process->get_executed_instructions() << " out of " << process->get_total_instructions() << "\n";
+    //std::cout << "Tick "<< sched_.current_tick() << " inst: " << process->get_executed_instructions() << " out of " << process->get_total_instructions() << "\n";
     if (is_yielded(context)) sched_.release_cpu_interrupt(this->id_, process, context);
 
     sched_.tick_barrier_sync();

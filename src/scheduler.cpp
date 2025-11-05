@@ -20,8 +20,9 @@
 
 Scheduler::Scheduler(const Config &cfg)
     : cfg_(cfg),
-      busy_ticks_per_cpu_(cfg.num_cpu),
+      
       job_queue_(Channel<std::shared_ptr<Process>>()),
+      busy_ticks_per_cpu_(cfg.num_cpu),
       ready_queue_(cfg.scheduler),
       blocked_queue_(Channel<std::shared_ptr<Process>>()),
       swapped_queue_(Channel<std::shared_ptr<Process>>()),
@@ -122,8 +123,14 @@ std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
 }
 
 void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
-{
-  std::lock_guard<std::mutex> lock(short_term_mtx_);
+{ 
+  std::lock_guard<std::mutex> lock(short_term_mtx_);  
+  if (!p) {
+    std::cerr << "[ERROR] release_cpu_interrupt called with null process (cpu " << cpu_id << ")\n";
+    return;
+  }
+
+  
   if (p->is_finished()){
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
@@ -132,27 +139,26 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
   } else if (p->is_waiting()) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
-    TimerEntry t;
-    t.process = p;
     uint64_t duration = 0;
     try {
-        if (!context.args.empty()) duration = std::stoull(context.args.at(0)); // ✅ safer than atoi
-    } catch (...) {
-        duration = 0;
-    }
-    t.wake_tick = duration + tick_;
-    sleep_queue_.push(t);
+        if (!context.args.empty()) duration = std::stoull(context.args.at(0));
+    } catch (...) { duration = 0; }
 
+    uint64_t now = tick_.load();
+    TimerEntry t(p, now + duration);
+    sleep_queue_.push(std::move(t));
   }
 }
 
 std::string Scheduler::cpu_utilization(){
-  std::string message = "";
-  uint16_t utilize = 0;
-
-  for (const auto runner : running_)
+  uint32_t utilize = 0;
+  for (const auto &runner : running_)
     if (runner) ++utilize;
-  return std::to_string((utilize / this->cfg_.num_cpu ) * 100)+"%";
+
+  double pct = (static_cast<double>(utilize) / static_cast<double>(this->cfg_.num_cpu)) * 100.0;
+  std::ostringstream oss;
+  oss << static_cast<int>(pct) << "%";
+  return oss.str();
 }
 
 
@@ -205,21 +211,27 @@ continue;
   }
 }
 
-void Scheduler::timer_check(){
-  while(!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= this->tick_){
-    auto entry = sleep_queue_.top();
-    sleep_queue_.pop();
-    entry.process->set_state(ProcessState::READY);
-    ready_queue_.send(entry.process);
-  }
+void Scheduler::timer_check() {
+    uint64_t now = tick_.load();
+    while (!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= now) {
+        auto entry = sleep_queue_.top();
+        sleep_queue_.pop();
+
+        if (!entry.process) {
+            std::cerr << "[WARN] timer_check: null TimerEntry at wake_tick=" << entry.wake_tick << "\n";
+            continue;
+        }
+
+        entry.process->set_state(ProcessState::READY);
+        ready_queue_.send(entry.process);
+    }
 }
+
 
 void Scheduler::sleep_process(std::shared_ptr<Process> p, uint64_t duration){
   uint32_t wake_time = this->current_tick() + duration;
   p->set_state(ProcessState::WAITING);
-  TimerEntry entry;
-  entry.process = p;
-  entry.wake_tick = wake_time;
+  TimerEntry entry{p, wake_time};
   sleep_queue_.push(entry);
 }
 
@@ -304,7 +316,9 @@ std::string Scheduler::get_sleep_queue_snapshot() {
         return oss.str();
     }
 
-    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> copy = sleep_queue_;
+    // use the exact same type as sleep_queue_
+  std::priority_queue<TimerEntry, std::vector<TimerEntry>, TimerEntryCompare> copy = sleep_queue_;
+
 
     while (!copy.empty()) {
         const TimerEntry& entry = copy.top();
@@ -359,3 +373,4 @@ std::string Scheduler::snapshot() {
 
   return oss.str();
 }
+

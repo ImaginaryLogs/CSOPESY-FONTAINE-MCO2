@@ -106,7 +106,7 @@ private:
   DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
   Channel<std::shared_ptr<Process>> blocked_queue_;                                       // sleeping or page-faulted, medium-term scheduler
   Channel<std::shared_ptr<Process>> swapped_queue_;                                       // swapped to backing store, medium-term scheduler
-  std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> sleep_queue_;  // sleep process, timer
+  std::priority_queue<TimerEntry, std::vector<TimerEntry>, TimerEntryCompare> sleep_queue_;  // sleep process, timer
 
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
