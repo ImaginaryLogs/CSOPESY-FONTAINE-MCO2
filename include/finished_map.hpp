@@ -16,7 +16,7 @@ class FinishedMap {
     void insert(ProcessPtr p, uint32_t finished_tick);
     ProcessPtr get_by_name(const std::string& name);
     bool contains(const std::string& name);
-    std::vector<OrderedEntry> ordered();
+    std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> ordered();
     void clear();
     size_t size();
     std::string snapshot();

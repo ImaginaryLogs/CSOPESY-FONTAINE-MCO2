@@ -128,6 +128,7 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
     finished_.insert(p, tick_ + 1);
+
   } else if (p->is_waiting()) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
@@ -135,13 +136,13 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     t.process = p;
     uint64_t duration = 0;
     try {
-        if (!context.args.empty())
-            duration = std::stoull(context.args.at(0)); // ✅ safer than atoi
+        if (!context.args.empty()) duration = std::stoull(context.args.at(0)); // ✅ safer than atoi
     } catch (...) {
         duration = 0;
     }
     t.wake_tick = duration + tick_;
     sleep_queue_.push(t);
+
   }
 }
 
@@ -167,6 +168,7 @@ void Scheduler::preemption_check()
     for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id){
       
       if (!running_[cpu_id]) {
+        //std::cout << "  CPU ID: " << cpu_id << " IDLE\n";
         continue;
 continue;
       }
