@@ -9,17 +9,17 @@ void FinishedMap::insert(ProcessPtr p, uint32_t finished_tick){
   std::scoped_lock<std::mutex> lock(this->mutex_);
   std::string name = p->name();
 
-  if (finished_by_name_.count(name)){
-    rename_process(p);
+  if (finished_by_name_.count(name)) {
+      rename_process(p);
   } else {
-    duplicate_count_[name] = 0;
+      duplicate_count_[name] = 0;
   }
-  auto t = std::time(nullptr);
-  
+
+  time_t now = std::time(nullptr);
 
   finished_by_name_[name] = p;
   finished_by_tick_.emplace(finished_tick, p);
-  finished_by_time_.emplace(t, p);
+  finished_by_time_.emplace(now, p);
 };
 
 ProcessPtr FinishedMap::get_by_name(const std::string& name) {
@@ -36,16 +36,27 @@ bool FinishedMap::contains(const std::string& name) {
 
 // Return ordered list of finished processes (most recent first)
 std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> FinishedMap::ordered() {
-    std::scoped_lock<std::mutex> lock(mutex_);
-    std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> result;
-    
-    result.reserve(finished_by_tick_.size());
-    // auto get the paired finished_by_time_
-    for (auto& [tick, weak] : finished_by_tick_) {
-        if (auto proc = weak.lock())
-            result.emplace_back(tick, proc, );
-    }
-    return result;
+  std::scoped_lock<std::mutex> lock(mutex_);
+  std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> result;
+  result.reserve(finished_by_tick_.size());
+
+  // Match each process' tick with its finish time
+  for (auto& [tick, weak] : finished_by_tick_) {
+      if (auto proc = weak.lock()) {
+          // Look up its recorded time (if found)
+          time_t t = 0;
+          for (auto it = finished_by_time_.begin(); it != finished_by_time_.end(); ++it) {
+              if (auto p2 = it->second.lock()) {
+                  if (p2 == proc) {
+                      t = it->first;
+                      break;
+                  }
+              }
+          }
+          result.emplace_back(tick, proc, t);
+      }
+  }
+  return result;
 }
 
 // Clear all finished processes
@@ -67,16 +78,22 @@ std::string FinishedMap::snapshot() {
   auto ordered_list = ordered();
   std::ostringstream oss;
   uint16_t counter = 0;
-  
-  for (const auto& pair : ordered_list){
-    oss << pair.second->name() << "\t"
-        << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\t"
-        << "(TICK " << pair.first << ")\t"
-        << pair.second->get_executed_instructions() << " / "
-        << pair.second->get_total_instructions() << "\t"
-        << counter << "\n";
-    ++counter;
+
+  oss << "Name\tFinished Time\tTick\tProgress\t#\n";
+  oss << "------------------------------------------------------\n";
+
+  for (const auto& [tick, proc, finish_time] : ordered_list) {
+      std::tm tm_buf{};
+      localtime_r(&finish_time, &tm_buf);
+
+      oss << proc->name() << "\t"
+          << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
+          << "(TICK " << tick << ")\t"
+          << proc->get_executed_instructions() << " / "
+          << proc->get_total_instructions() << "\t"
+          << counter++ << "\n";
   }
+
   return oss.str();
 }
 

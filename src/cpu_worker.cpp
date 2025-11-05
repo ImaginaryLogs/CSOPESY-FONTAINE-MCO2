@@ -42,12 +42,11 @@ void CPUWorker::loop() {
   while (running_.load()) {
 
     while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     sched_.tick_barrier_sync();
 
     auto process = sched_.dispatch_to_cpu(this->id_);
-
-    uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
 
     if (!process) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -56,6 +55,7 @@ void CPUWorker::loop() {
       continue;
     }
 
+    uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
     ProcessReturnContext context = process->execute_tick(
         sched_.current_tick(), 
         sched_.get_scheduler_tick_delay(),

@@ -8,7 +8,7 @@
 #include "process.hpp"
 
 using ProcessPtr = std::shared_ptr<Process>;
-using OrderedEntry = std::pair<uint32_t, ProcessPtr>;
+using OrderedEntry = std::tuple<uint32_t, ProcessPtr, time_t>;
 
 class FinishedMap {
   public:

@@ -28,7 +28,6 @@ Scheduler::Scheduler(const Config &cfg)
       finished_(FinishedMap())
 {
   initialize_vectors();
-  this->tick_.store(1);
 }
 
 Scheduler::~Scheduler()
@@ -71,8 +70,13 @@ void Scheduler::stop(){
   pause_cv_.notify_all();
 
   for (auto &worker : cpu_workers_) worker->stop();
-
-  if (tick_sync_barrier_) tick_sync_barrier_->arrive_and_drop();
+  #if DEBUG_SCHEDULER
+    std::cout << "Workers sending stopping...\n";
+  #endif
+  if (tick_update_sync_barrier_) tick_update_sync_barrier_->arrive_and_drop();
+  #if DEBUG_SCHEDULER
+    std::cout << "Workers arrived and...\n";
+  #endif
 
   for (auto &worker : cpu_workers_) worker->join();
 
@@ -128,6 +132,7 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
     finished_.insert(p, tick_ + 1);
+
   } else if (p->is_waiting()) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
@@ -136,11 +141,12 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     uint64_t duration = 0;
     try {
         if (!context.args.empty())
-            duration = std::stoull(context.args.at(0)); // ✅ safer than atoi
+            duration = std::stoull(context.args.at(0));
     } catch (...) {
         duration = 0;
     }
-    t.wake_tick = duration + tick_;
+    uint64_t now = tick_.load();
+    t.wake_tick = now + (duration > 0 ? (duration - 1) : 0);
     sleep_queue_.push(t);
   }
 }
@@ -196,16 +202,19 @@ void Scheduler::preemption_check()
 }
 
 void Scheduler::timer_check(){
-  while(!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= this->tick_){
+  uint64_t now = this->tick_.load();
+  while(!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= now){
     auto entry = sleep_queue_.top();
     sleep_queue_.pop();
-    entry.process->set_state(ProcessState::READY);
-    ready_queue_.send(entry.process);
+    if (entry.process) {
+      entry.process->set_state(ProcessState::READY);
+      ready_queue_.send(entry.process);
+    }
   }
 }
 
 void Scheduler::sleep_process(std::shared_ptr<Process> p, uint64_t duration){
-  uint32_t wake_time = this->current_tick() + duration;
+  uint32_t wake_time = this->tick_.load() + duration;
   p->set_state(ProcessState::WAITING);
   TimerEntry entry;
   entry.process = p;
@@ -218,7 +227,7 @@ void Scheduler::log_status(){
     std::cout << "Scheduler Tick " << this->tick_.load() << " completed.\n";
   #endif
   
-  if (this->tick_ % this->cfg_.snapshot_cooldown == 0)
+  if (this->tick_.load() % this->cfg_.snapshot_cooldown == 0)
     log_queue.send(Scheduler::snapshot());
 }
 
