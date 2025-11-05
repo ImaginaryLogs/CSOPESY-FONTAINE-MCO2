@@ -167,12 +167,12 @@ void Scheduler::preemption_check()
     for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id){
       
       if (!running_[cpu_id]) {
-        std::cout << "  CPU ID: " << cpu_id << " IDLE\n";
         continue;
+continue;
       }
 
       #if DEBUG_SCHEDULER
-      std::cout << "  CPU ID: " << cpu_id << ", PID=" << running_[cpu_id]->id() << " RR=" << cpu_quantum_remaining_[cpu_id] << " LA=" << running_[cpu_id]->last_active_tick << "\n";
+
       #endif
 
       if (cpu_quantum_remaining_[cpu_id] > 0){

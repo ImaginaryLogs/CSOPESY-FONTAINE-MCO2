@@ -39,7 +39,7 @@ uint32_t Scheduler::current_tick() const { return tick_.load(); }
 
 std::string Scheduler::get_sched_snapshots(){
   auto snapshots = this->log_queue.snapshot();
-  this->log_queue.empty();
+  (void)this->log_queue.isEmpty();
   return snapshots;
 }
 

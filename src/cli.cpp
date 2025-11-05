@@ -66,6 +66,11 @@ void CLI::initialize_system() {
   scheduler_ = new Scheduler(cfg_);
   scheduler_->start();
 
+      // One-time CPU idle snapshot after scheduler starts
+      for (uint32_t i = 0; i < cfg_.num_cpu; ++i)
+        std::cout << "  CPU ID: " << i << " IDLE\n";
+
+
   if (generator_) delete generator_;
   generator_ = new ProcessGenerator(cfg_, *scheduler_);
 
