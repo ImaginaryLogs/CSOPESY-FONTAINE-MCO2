@@ -7,6 +7,7 @@
 #include <random>
 #include <sstream>
 #include <thread>
+#include <iomanip>
 
 // Enable debug logging for the generator by uncommenting:
 // #define DEBUG_GENERATOR

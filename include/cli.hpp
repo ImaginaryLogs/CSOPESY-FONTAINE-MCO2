@@ -22,6 +22,11 @@ private:
   ScreenManager screen_mgr_;
   ProcessGenerator *generator_{nullptr};
   Reporter *reporter_{nullptr};
+  private:
+  bool require_init() const;
+  void initialize_system();
+  void handle_screen_command(const std::vector<std::string>& args);
+  void attach_process_screen(const std::string& name, const std::shared_ptr<Process>& proc);
 };
 
 #endif 
