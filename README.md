@@ -111,6 +111,10 @@ Requirements: C++20 compiler (barrier requires modern libstdc++/MSVC), standard 
 
 ### 3.1. Windows (MSYS2 UCRT64)
 
+#### MAKE
+> make clean && make CXXFLAGS="-std=c++20 -g -O1 -fsanitize=address -fno-omit-frame-pointer"
+make run
+
 #### MSYS2 UCRT64
 > g++ -std=c++20 -O2 -pthread -Iinclude src/*.cpp -o csopesy
 
