@@ -160,7 +160,7 @@ int CLI::run() {
       initialize_system();
     }
     else if (cmd == "scheduler-start") {
-      if (require_init()) generator_->start();
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n";}
     }
     else if (cmd == "scheduler-stop") {
       if (require_init()) generator_->stop();

@@ -321,6 +321,16 @@ void ProcessGenerator::start() {
   if (running_.load())
     return;
   running_.store(true);
+  // Seed one process immediately so users see activity right after `scheduler-start`
+  try {
+    uint32_t est_size_immediate = 0;
+    uint32_t initial_top = rand_range(cfg_.min_ins, cfg_.max_ins);
+    auto ins0 = generate_instructions(initial_top, est_size_immediate);
+    uint32_t id0 = next_id_.fetch_add(1);
+    std::ostringstream name0; name0 << "p" << std::setw(2) << std::setfill('0') << id0;
+    auto p0 = std::make_shared<Process>(id0, name0.str(), ins0);
+    sched_.submit_process(p0);
+  } catch (...) { /* best effort seed; ignore errors */ }
 #ifdef DEBUG_GENERATOR
   std::clog << "generator: starting" << std::endl;
 #endif
