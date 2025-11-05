@@ -272,27 +272,30 @@ void Scheduler::tick_loop()
   }
 }
 
-std::string Scheduler::cpu_state_snapshot(){
-  std::ostringstream oss;
-  auto t = std::time(nullptr);
-  auto tm = *std::localtime(&t);
-  
-  for (size_t i = 0; i < running_.size(); ++i){
-    auto &proc = running_[i];
-    if (proc)
-      oss << proc->name() << "\t"
-          << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\t"
-          << "PID=" << proc->id() << "\t"
-          << "RR=" << cpu_quantum_remaining_[i] << "\t"
-          << "LA=" << proc->last_active_tick << "\t"
-          << "Core: " << i << "\t"
-          << proc->get_executed_instructions() << " / "
-          << proc->get_total_instructions() << "\n";
-    else
-      oss << "  CPU " << i << ": IDLE\n";
-  }
-  return oss.str();
+std::string Scheduler::cpu_state_snapshot() {
+    std::scoped_lock<std::mutex> lock(short_term_mtx_);  // prevent race
+    std::ostringstream oss;
+    auto t = std::time(nullptr);
+    auto tm = *std::localtime(&t);
+
+    for (size_t i = 0; i < running_.size(); ++i) {
+        auto &proc = running_[i];
+        if (proc) {
+            oss << proc->name() << "\t"
+                << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\t"
+                << "PID=" << proc->id() << "\t"
+                << "RR=" << cpu_quantum_remaining_[i] << "\t"
+                << "LA=" << proc->last_active_tick << "\t"
+                << "Core: " << i << "\t"
+                << proc->get_executed_instructions() << " / "
+                << proc->get_total_instructions() << "\n";
+        } else {
+            oss << "  CPU " << i << ": IDLE\n";
+        }
+    }
+    return oss.str();
 }
+
 
 std::string Scheduler::get_sleep_queue_snapshot() {
     std::ostringstream oss;

@@ -30,7 +30,7 @@ void test_sleep_multicore(uint32_t n){
   // --- Configure scheduler ---
   Config cfg;
   cfg.num_cpu = n;              // single CPU for deterministic test
-  cfg.scheduler_tick_delay = 1; // fast ticks
+  cfg.scheduler_tick_delay = 0; // fast ticks
   cfg.quantum_cycles = 1;
   cfg.snapshot_cooldown = 1;
   cfg.scheduler = SchedulingPolicy::RR;

@@ -44,6 +44,7 @@ Config load_config(const std::string &path) {
     else if (key == "max-ins") cfg.max_ins = static_cast<uint32_t>(std::stoul(value));
     else if (key == "delay-per-exec") cfg.delay_per_exec = static_cast<uint32_t>(std::stoul(value));
     else if (key == "snapshot-cooldown") cfg.snapshot_cooldown = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "scheduler-tick-delay") cfg.scheduler_tick_delay = static_cast<uint32_t>(std::stoul(value));
   }
   return cfg;
 }
