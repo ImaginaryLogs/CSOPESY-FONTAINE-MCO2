@@ -167,10 +167,10 @@ struct TimerEntry {
     std::shared_ptr<Process> process;
     uint64_t wake_tick;
 
-    TimerEntry(std::shared_ptr<Process> p, uint64_t tick)
-        : process(std::move(p)), wake_tick(tick) {}
-
-    TimerEntry() : process(nullptr), wake_tick(0) {}
+    // Compare by wake_tick for min-heap behavior
+    bool operator<(const TimerEntry& other) const noexcept {
+        return wake_tick > other.wake_tick; // reversed to make smallest tick on top
+    }
 };
 
 struct TimerEntryCompare {

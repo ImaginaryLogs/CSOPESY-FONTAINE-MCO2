@@ -100,26 +100,39 @@ void Scheduler::long_term_admission()
 // === Paging & Swapping (Medium-term scheduler) ===
 
 // === Short-Term Scheduling API ===
-
 std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
 {
-  std::lock_guard<std::mutex> lock(short_term_mtx_);
+    std::lock_guard<std::mutex> short_lock(short_term_mtx_);
 
-  if (this->ready_queue_.isEmpty() && !running_[cpu_id]){
-    return nullptr;
-  } else if (running_[cpu_id]) {
-    return running_[cpu_id];
-  }
+    // If CPU already running a process, return it
+    if (running_[cpu_id]) {
+        if (!running_[cpu_id].get()) {
+            std::cerr << "[WARN] running_[" << cpu_id << "] is null!\n";
+            running_[cpu_id].reset();
+            return nullptr;
+        }
+        return running_[cpu_id];
+    }
 
-  // Assign Current Process to Scheduler Internal States
-  auto p = this->ready_queue_.receiveNext();
+    // Nothing to schedule
+    if (this->ready_queue_.isEmpty()) {
+        return nullptr;
+    }
 
-  p->set_state(ProcessState::RUNNING);
-  p->cpu_id = cpu_id;
-  running_[cpu_id] = p;
-  p->last_active_tick = this->tick_.load();
+    // Fetch next process
+    auto p = this->ready_queue_.receiveNext();
+    if (!p) {
+        //std::cerr << "[ERROR] Scheduler::dispatch_to_cpu received null process from ready_queue_\n";
+        return nullptr;
+    }
 
-  return p;
+    // Assign to CPU
+    p->set_state(ProcessState::RUNNING);
+    p->cpu_id = cpu_id;
+    p->last_active_tick = this->tick_.load();
+
+    running_[cpu_id] = p;
+    return p;
 }
 
 void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
@@ -145,8 +158,8 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     } catch (...) { duration = 0; }
 
     uint64_t now = tick_.load();
-    TimerEntry t(p, now + duration);
-    sleep_queue_.push(std::move(t));
+    uint64_t wake_time = now + duration;
+    Scheduler::queue_sleep(p, wake_time);
   }
 }
 
@@ -211,7 +224,8 @@ continue;
   }
 }
 
-void Scheduler::timer_check() {
+void Scheduler::timer_check() {// Adding a sleeping process
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
     uint64_t now = tick_.load();
     while (!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= now) {
         auto entry = sleep_queue_.top();
@@ -231,8 +245,18 @@ void Scheduler::timer_check() {
 void Scheduler::sleep_process(std::shared_ptr<Process> p, uint64_t duration){
   uint32_t wake_time = this->current_tick() + duration;
   p->set_state(ProcessState::WAITING);
-  TimerEntry entry{p, wake_time};
-  sleep_queue_.push(entry);
+  Scheduler::queue_sleep(p, wake_time);
+}
+
+void Scheduler::queue_sleep(std::shared_ptr<Process> p, uint64_t wake_tick) {
+    if (!p) {
+        std::cerr << "[ERROR] Tried to queue null process for sleep\n";
+        return;
+    }
+    // Adding a sleeping process
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    TimerEntry t{p, wake_tick};
+    sleep_queue_.push(t);
 }
 
 void Scheduler::log_status(){
@@ -309,31 +333,34 @@ std::string Scheduler::cpu_state_snapshot() {
 }
 
 
-std::string Scheduler::get_sleep_queue_snapshot() {
-    std::ostringstream oss;
-    if (sleep_queue_.empty()) {
-        oss << "(empty)\n";
-        return oss.str();
-    }
+std::vector<TimerEntry> Scheduler::get_sleep_queue_snapshot() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
 
-    // use the exact same type as sleep_queue_
-  std::priority_queue<TimerEntry, std::vector<TimerEntry>, TimerEntryCompare> copy = sleep_queue_;
-
-
+    // Make a shallow copy of the priority_queue’s contents safely
+    auto copy = sleep_queue_;
+    std::vector<TimerEntry> snapshot;
     while (!copy.empty()) {
-        const TimerEntry& entry = copy.top();
-        if (entry.process) {
-            oss << entry.process->name()
-                << " | " << entry.wake_tick
-                << "\n";
-        } else {
-            oss << "(null process) | tick " << entry.wake_tick << "\n"; // ??
-        }
+        snapshot.push_back(copy.top());
         copy.pop();
     }
-    oss << "\n";
-  return oss.str();
+    return snapshot;
 }
+
+std::string Scheduler::print_sleep_queue() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    std::priority_queue<TimerEntry> copy = sleep_queue_;
+    std::ostringstream oss;
+    while (!copy.empty()) {
+        const auto &t = copy.top();
+        if (t.process)
+            oss << "  PID " << t.process->id() << " wakes at " << t.wake_tick << "\n";
+        else
+            oss<< "  [NULL process] wakes at " << t.wake_tick << "\n";
+        copy.pop();
+    }
+    return oss.str();
+}
+
 
 std::string Scheduler::snapshot() {
   std::ostringstream oss;
@@ -344,7 +371,7 @@ std::string Scheduler::snapshot() {
   oss << "[Sleep Queue]\n"
       << (((sleep_queue_.empty()))
         ? " (empty)\n"
-        : get_sleep_queue_snapshot());
+        : print_sleep_queue());
 
   // --- Job Queue ---
   oss << "[Job Queue]\n"
