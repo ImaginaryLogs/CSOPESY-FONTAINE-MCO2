@@ -1,10 +1,12 @@
 #include "../include/cli.hpp"
 #include "../include/process.hpp"
+#include "../include/scheduler.hpp"
 #include <iostream>
 #include <sstream>
 #include <vector>
 #include <cctype>
 #include <algorithm>
+#include <memory>   // <-- needed for std::shared_ptr
 
 // util funcs
 
@@ -66,10 +68,9 @@ void CLI::initialize_system() {
   scheduler_ = new Scheduler(cfg_);
   scheduler_->start();
 
-      // One-time CPU idle snapshot after scheduler starts
-      for (uint32_t i = 0; i < cfg_.num_cpu; ++i)
-        std::cout << "  CPU ID: " << i << " IDLE\n";
-
+  // One-time CPU idle snapshot after scheduler starts
+  for (uint32_t i = 0; i < cfg_.num_cpu; ++i)
+    std::cout << "  CPU ID: " << i << " IDLE\n";
 
   if (generator_) delete generator_;
   generator_ = new ProcessGenerator(cfg_, *scheduler_);
@@ -160,7 +161,54 @@ int CLI::run() {
       initialize_system();
     }
     else if (cmd == "scheduler-start") {
-      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n";}
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n"; }
+    }
+    else if (cmd == "pause") {
+      if (require_init()) { scheduler_->pause(); std::cout << "Paused.\n"; }
+    }
+    else if (cmd == "resume") {
+      if (require_init()) { scheduler_->resume(); std::cout << "Resumed.\n"; }
+    }
+    else if (cmd == "policy") {
+      if (require_init()) {
+        if (args.size() < 2) { std::cout << "Usage: policy <rr|fcfs|priority>\n"; }
+        else {
+          std::string v = to_lower(args[1]);
+          if (v == "rr") scheduler_->setSchedulingPolicy(SchedulingPolicy::RR);
+          else if (v == "fcfs") scheduler_->setSchedulingPolicy(SchedulingPolicy::FCFS);
+          else if (v == "priority") scheduler_->setSchedulingPolicy(SchedulingPolicy::PRIORITY);
+          else { std::cout << "Unknown policy. Use rr|fcfs|priority\n"; }
+        }
+      }
+    }
+    else if (cmd == "util") {
+      if (require_init()) {
+        std::string snap = scheduler_->snapshot();
+        // Parse CPU states section
+        size_t cpuStart = snap.find("[CPU States]:");
+        size_t cpuEnd = snap.find("[Finished Processes]:");
+        unsigned used = 0;
+        if (cpuStart != std::string::npos) {
+          if (cpuEnd == std::string::npos) cpuEnd = snap.size();
+          std::string section = snap.substr(cpuStart, cpuEnd - cpuStart);
+          std::istringstream iss(section);
+          std::string line2;
+          while (std::getline(iss, line2)) {
+            // In snapshot, running lines list processes; header or empty lines are ignored.
+            if (!line2.empty() &&
+                line2.find("[CPU States]") == std::string::npos)
+            {
+              // If it looks like a running process row (has "Core:")
+              if (line2.find("Core: ") != std::string::npos) ++used;
+            }
+          }
+        }
+        unsigned total = scheduler_->get_cpu_count();
+        unsigned pct = total ? (used * 100 / total) : 0;
+        std::cout << "CPU utilization: " << pct << "%\n";
+        std::cout << "Cores used: " << used << "\n";
+        std::cout << "Cores available: " << total << "\n";
+      }
     }
     else if (cmd == "scheduler-stop") {
       if (require_init()) generator_->stop();

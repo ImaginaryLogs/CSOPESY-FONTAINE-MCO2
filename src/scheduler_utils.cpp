@@ -54,6 +54,14 @@ void Scheduler::tick_barrier_sync()
 
 uint32_t Scheduler::get_cpu_count() const { return cfg_.num_cpu; };
 
+// uint32_t Scheduler::count_running_cores() const {
+//   std::lock_guard<std::mutex> lock(short_term_mtx_);
+//   uint32_t used = 0;
+//   for (const auto &p : running_) if (p) ++used;
+//   return used;
+// }
+
+
 uint32_t Scheduler::get_scheduler_tick_delay() const { return cfg_.scheduler_tick_delay; }
 
 
