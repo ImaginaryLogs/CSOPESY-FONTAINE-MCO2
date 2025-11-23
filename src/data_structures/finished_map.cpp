@@ -1,4 +1,4 @@
-#include "../include/finished_map.hpp"
+#include "data_structures/finished_map.hpp"
 #include <sstream>
 #include <iomanip>
 #include <ctime>

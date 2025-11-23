@@ -1,5 +1,5 @@
 #pragma once
-#include "instruction.hpp"
+#include "processes/instruction.hpp"
 #include <ctime>
 #include <mutex>
 #include <string>

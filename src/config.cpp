@@ -33,7 +33,6 @@ Config load_config(const std::string &path) {
 
     else if (key == "scheduler") {
       std::string v=value; std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-      
       if (v == "rr")        cfg.scheduler = SchedulingPolicy::RR;
       else if (v == "fcfs") cfg.scheduler = SchedulingPolicy::FCFS;
       else cfg.scheduler = SchedulingPolicy::FCFS;

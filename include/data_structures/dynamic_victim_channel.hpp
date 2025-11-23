@@ -9,7 +9,7 @@
 #include <functional>
 #include <condition_variable>
 #include "config.hpp"
-#include "process.hpp"
+#include "processes/process.hpp"
 #include "util.hpp"
 #include <cassert>
 #include <queue>

@@ -1,10 +1,10 @@
 #pragma once
 #include "config.hpp"
-#include "cpu_worker.hpp"
-#include "process_generator.hpp"
-#include "reporter.hpp"
-#include "scheduler.hpp"
-#include "screen.hpp"
+#include "kernel/cpu_worker.hpp"
+#include "kernel/scheduler.hpp"
+#include "processes/process_generator.hpp"
+#include "view/reporter.hpp"
+#include "view/screen.hpp"
 
 #ifndef MY_HEADER_FILE_H
 #define MY_HEADER_FILE_H

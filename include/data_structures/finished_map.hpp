@@ -5,7 +5,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include "process.hpp"
+#include "processes/process.hpp"
 
 using ProcessPtr = std::shared_ptr<Process>;
 using OrderedEntry = std::pair<uint32_t, ProcessPtr>;

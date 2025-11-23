@@ -1,5 +1,5 @@
-#include "../include/process.hpp"
-#include "../include/instruction.hpp"
+#include "processes/process.hpp"
+#include "processes/instruction.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdint>

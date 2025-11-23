@@ -8,10 +8,7 @@
 #include <memory>
 #include <functional>
 #include <condition_variable>
-#include "config.hpp"
-#include "process.hpp"
-#include "util.hpp"
-#include <cassert>
+#include "processes/process.hpp"
 #include <queue>
 
 // Thread Safe Queues (or channels in go-lang) are a VERY common data structure in schedulers.

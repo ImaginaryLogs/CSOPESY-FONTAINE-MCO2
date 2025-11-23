@@ -1,5 +1,5 @@
-#include "../include/reporter.hpp"
-#include "../include/scheduler.hpp"
+#include "view/reporter.hpp"
+#include "kernel/scheduler.hpp"
 #include <fstream>
 #include <iomanip>
 #include <iostream>

@@ -1,6 +1,6 @@
-#include "../include/cpu_worker.hpp"
-#include "../include/process.hpp"
-#include "../include/scheduler.hpp"
+#include "kernel/cpu_worker.hpp"
+#include "processes/process.hpp"
+#include "kernel/scheduler.hpp"
 #include <iostream>
 
 #define DEBUG_CPU_WORKER true

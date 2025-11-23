@@ -1,5 +1,5 @@
 #pragma once
-#include "scheduler.hpp"
+#include "kernel/scheduler.hpp"
 #include <string>
 
 class Reporter {

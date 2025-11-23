@@ -1,8 +1,14 @@
 #pragma once
+
 #include "config.hpp"
-#include "process.hpp"
-#include "finished_map.hpp"
-#include "cpu_worker.hpp"
+#include "../util.hpp"
+#include "../processes/process.hpp"
+#include "../data_structures/finished_map.hpp"
+#include "../data_structures/channel.hpp"
+#include "../data_structures/dynamic_victim_channel.hpp"
+#include "../data_structures/timer_entry.hpp"
+#include "kernel/cpu_worker.hpp"
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -11,7 +17,6 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include "util.hpp"
 #include <barrier>
 #include <queue>
 #include <functional>

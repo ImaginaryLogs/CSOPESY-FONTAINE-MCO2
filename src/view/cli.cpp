@@ -1,6 +1,6 @@
-#include "../include/cli.hpp"
-#include "../include/process.hpp"
-#include "../include/scheduler.hpp"
+#include "view/cli.hpp"
+#include "processes/process.hpp"
+#include "kernel/scheduler.hpp"
 #include <iostream>
 #include <sstream>
 #include <vector>

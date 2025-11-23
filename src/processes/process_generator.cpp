@@ -1,6 +1,6 @@
-#include "../include/process_generator.hpp"
-#include "../include/instruction.hpp"
-#include "../include/process.hpp"
+#include "processes/process_generator.hpp"
+#include "processes/instruction.hpp"
+#include "processes/process.hpp"
 #include <chrono>
 #include <iomanip>
 #include <iostream>

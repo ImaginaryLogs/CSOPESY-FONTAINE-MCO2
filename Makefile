@@ -17,7 +17,7 @@ BUILD_DIR := build
 TARGET := $(BUILD_DIR)/app
 
 # Sources and objects
-SRC := $(wildcard $(SRC_DIR)/*.cpp)
+SRC := $(shell find $(SRC_DIR) -name '*.cpp')
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
 # Test configuration (can override with TEST=name)
@@ -36,10 +36,16 @@ $(TARGET): $(OBJ) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+# $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+# 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 $(BUILD_DIR):
 	mkdir -p $@
+
+
 
 # ===============================
 # Testing target
