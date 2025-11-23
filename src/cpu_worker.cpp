@@ -47,14 +47,13 @@ void CPUWorker::loop() {
 
     auto process = sched_.dispatch_to_cpu(this->id_);
 
-    uint32_t consumed_ticks = 2; // max ticks possible in one execute_tick call
+    uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
 
     // #if DEBUG_CPU_WORKER
     // std::cout << "CPU Worker executing for CORE " << this->id_ << " at tick \n";
     // #endif
 
     if (!process) {
-      sched_.tick_barrier_sync();
       sched_.tick_barrier_sync();
       sched_.tick_barrier_sync();
       continue;

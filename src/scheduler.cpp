@@ -94,6 +94,7 @@ void Scheduler::long_term_admission()
     auto p = this->job_queue_.receive();
     p->set_state(ProcessState::READY);
     this->ready_queue_.send(p);
+    
   }
 }
 
@@ -126,32 +127,42 @@ std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
         return nullptr;
     }
 
+    for (const auto &r : running_) {
+        if (r && r == p) {
+            return nullptr;
+        }
+    }
+
     // Assign to CPU
     p->set_state(ProcessState::RUNNING);
     p->cpu_id = cpu_id;
     p->last_active_tick = this->tick_.load();
-
     running_[cpu_id] = p;
+
+    if (cpu_quantum_remaining_.size() > cpu_id)
+        cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
     return p;
 }
 
 void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
 { 
   std::lock_guard<std::mutex> lock(short_term_mtx_);  
+
   if (!p) {
     std::cerr << "[ERROR] release_cpu_interrupt called with null process (cpu " << cpu_id << ")\n";
     return;
   }
 
   
-  if (p->is_finished()){
+  if (p->is_finished() || context.state == ProcessState::FINISHED){
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
     finished_.insert(p, tick_ + 1);
-
-  } else if (p->is_waiting()) {
+    return;
+  } else if (p->is_waiting() || context.state == ProcessState::WAITING) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
+
     uint64_t duration = 0;
     try {
         if (!context.args.empty()) duration = std::stoull(context.args.at(0));
@@ -159,20 +170,26 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
 
     uint64_t now = tick_.load();
     uint64_t wake_time = now + duration;
-    Scheduler::queue_sleep(p, wake_time);
+    sleep_queue_.send(p, wake_time);
+    return;
+  } else if (context.state == ProcessState::READY) {
+        // Preemption: move back to ready queue
+        p->set_state(ProcessState::READY);
+        running_[cpu_id] = nullptr;
+
+        // Use enqueue_ready to avoid duplicates
+        enqueue_ready(p);
+        return;
+  } else if (context.state == ProcessState::RUNNING) {
+    return;
   }
+
+  p->set_state(ProcessState::READY);
+  running_[cpu_id] == nullptr;
+  enqueue_ready(p);
 }
 
-std::string Scheduler::cpu_utilization(){
-  uint32_t utilize = 0;
-  for (const auto &runner : running_)
-    if (runner) ++utilize;
 
-  double pct = (static_cast<double>(utilize) / static_cast<double>(this->cfg_.num_cpu)) * 100.0;
-  std::ostringstream oss;
-  oss << static_cast<int>(pct) << "%";
-  return oss.str();
-}
 
 
 void Scheduler::short_term_dispatch(){ 
@@ -193,27 +210,30 @@ void Scheduler::preemption_check()
       std::cout << "Preemption Check" << "\n";
     #endif
     for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id){
-      
+      {
+      std::lock_guard<std::mutex> lock(short_term_mtx_);
+
       if (!running_[cpu_id]) {
         //std::cout << "  CPU ID: " << cpu_id << " IDLE\n";
         continue;
-continue;
       }
-
-      #if DEBUG_SCHEDULER
-
-      #endif
 
       if (cpu_quantum_remaining_[cpu_id] > 0){
         cpu_quantum_remaining_[cpu_id]--;
         continue;
       }
-
+    }
+      
       // Time to preempt
       ProcessReturnContext interrupt = {ProcessState::READY, {}};
       release_cpu_interrupt(cpu_id, running_[cpu_id], interrupt);
-      dispatch_to_cpu(cpu_id);
-      cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
+
+      auto newp = dispatch_to_cpu(cpu_id);
+      if (newp){ 
+        std::lock_guard<std::mutex> lock(short_term_mtx_);
+        cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
+      }
+      std::cout << "I love\n";
     }
     break;
   case FCFS:
@@ -225,11 +245,9 @@ continue;
 }
 
 void Scheduler::timer_check() {// Adding a sleeping process
-    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
     uint64_t now = tick_.load();
-    while (!sleep_queue_.empty() && sleep_queue_.top().wake_tick <= now) {
-        auto entry = sleep_queue_.top();
-        sleep_queue_.pop();
+    while (!sleep_queue_.isEmpty() && sleep_queue_.top().wake_tick <= now) {
+        auto entry = sleep_queue_.receive();
 
         if (!entry.process) {
             std::cerr << "[WARN] timer_check: null TimerEntry at wake_tick=" << entry.wake_tick << "\n";
@@ -242,22 +260,6 @@ void Scheduler::timer_check() {// Adding a sleeping process
 }
 
 
-void Scheduler::sleep_process(std::shared_ptr<Process> p, uint64_t duration){
-  uint32_t wake_time = this->current_tick() + duration;
-  p->set_state(ProcessState::WAITING);
-  Scheduler::queue_sleep(p, wake_time);
-}
-
-void Scheduler::queue_sleep(std::shared_ptr<Process> p, uint64_t wake_tick) {
-    if (!p) {
-        std::cerr << "[ERROR] Tried to queue null process for sleep\n";
-        return;
-    }
-    // Adding a sleeping process
-    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
-    TimerEntry t{p, wake_tick};
-    sleep_queue_.push(t);
-}
 
 void Scheduler::log_status(){
   #if DEBUG_SCHEDULER
@@ -294,33 +296,39 @@ void Scheduler::tick_loop()
       
       // empty for now                                                            // === 3. Middle-term scheduling: handle page faults, swapping ===
 
+
       if (!this->ready_queue_.isEmpty())                                          // === 4. Short-term scheduling: dispatch to CPUs ===
         Scheduler::short_term_dispatch();
       
       Scheduler::log_status();                                                    // === 5. Log Status ===
 
       Scheduler::tick_barrier_sync();
-      this->tick_.fetch_add(1);                                                   // === 5. March forward the global tick ===
+      this->tick_.fetch_add(1);                                                   // === 6. March forward the global tick ===
       Scheduler::tick_barrier_sync();
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
   }
 }
-
 std::string Scheduler::cpu_state_snapshot() {
-    std::scoped_lock<std::mutex> lock(short_term_mtx_);  // prevent race
+    std::vector<std::shared_ptr<Process>> procs;
+    std::vector<uint32_t> quanta;
+    
+    procs = running_;
+    quanta = cpu_quantum_remaining_;
+     // unlock here before printing
+
     std::ostringstream oss;
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
 
-    for (size_t i = 0; i < running_.size(); ++i) {
-        auto &proc = running_[i];
+    for (size_t i = 0; i < procs.size(); ++i) {
+        auto &proc = procs[i];
         if (proc) {
             oss << proc->name() << "\t"
                 << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\t"
                 << "PID=" << proc->id() << "\t"
-                << "RR=" << cpu_quantum_remaining_[i] << "\t"
+                << "RR=" << quanta[i] << "\t"
                 << "LA=" << proc->last_active_tick << "\t"
                 << "Core: " << i << "\t"
                 << proc->get_executed_instructions() << " / "
@@ -333,35 +341,6 @@ std::string Scheduler::cpu_state_snapshot() {
 }
 
 
-std::vector<TimerEntry> Scheduler::get_sleep_queue_snapshot() const {
-    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
-
-    // Make a shallow copy of the priority_queue’s contents safely
-    auto copy = sleep_queue_;
-    std::vector<TimerEntry> snapshot;
-    while (!copy.empty()) {
-        snapshot.push_back(copy.top());
-        copy.pop();
-    }
-    return snapshot;
-}
-
-std::string Scheduler::print_sleep_queue() const {
-    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
-    std::priority_queue<TimerEntry> copy = sleep_queue_;
-    std::ostringstream oss;
-    while (!copy.empty()) {
-        const auto &t = copy.top();
-        if (t.process)
-            oss << "  PID " << t.process->id() << " wakes at " << t.wake_tick << "\n";
-        else
-            oss<< "  [NULL process] wakes at " << t.wake_tick << "\n";
-        copy.pop();
-    }
-    return oss.str();
-}
-
-
 std::string Scheduler::snapshot() {
   std::ostringstream oss;
   oss << "=== Scheduler Snapshot ===| ---\n";
@@ -369,10 +348,10 @@ std::string Scheduler::snapshot() {
   oss << "Paused: " << (paused_.load() ? "true" : "false") << "\n";
 
   oss << "[Sleep Queue]\n"
-      << (((sleep_queue_.empty()))
+      << (((sleep_queue_.isEmpty()))
         ? " (empty)\n"
-        : print_sleep_queue());
-
+        : sleep_queue_.print_sleep_queue());
+  
   // --- Job Queue ---
   oss << "[Job Queue]\n"
       << ((job_queue_.isEmpty())
@@ -401,3 +380,105 @@ std::string Scheduler::snapshot() {
   return oss.str();
 }
 
+
+std::vector<TimerEntry> TimerEntrySleepQueue::get_sleep_queue_snapshot() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+
+    // Make a shallow copy of the priority_queue’s contents safely
+    auto copy = sleep_queue_;
+    std::vector<TimerEntry> snapshot;
+    while (!copy.empty()) {
+        snapshot.push_back(copy.top());
+        copy.pop();
+    }
+    return snapshot;
+}
+
+std::string TimerEntrySleepQueue::print_sleep_queue() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    std::priority_queue<TimerEntry> copy = sleep_queue_;
+    std::ostringstream oss;
+    while (!copy.empty()) {
+        const auto &t = copy.top();
+        if (t.process)
+            oss << t.process->name()
+                << "\tPID:" << t.process->id() << "\tWT " << t.wake_tick << "\n";
+        else
+            oss << "  [NULL process] wakes at " << t.wake_tick << "\n";
+        copy.pop();
+    }
+    return oss.str();
+}
+
+void TimerEntrySleepQueue::send(std::shared_ptr<Process> p, uint64_t wake_tick) {
+    if (!p) {
+        std::cerr << "[ERROR] Tried to queue null process for sleep\n";
+        return;
+    }
+    // Adding a sleeping process
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    TimerEntry t{p, wake_tick};
+    sleep_queue_.push(t);
+}
+
+TimerEntry TimerEntrySleepQueue::receive() {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    if (sleep_queue_.empty()) {
+        return TimerEntry{nullptr, 0};
+    }
+    TimerEntry t = sleep_queue_.top();
+    sleep_queue_.pop();
+    return t;
+}
+
+bool TimerEntrySleepQueue::isEmpty() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    return sleep_queue_.empty();
+}
+
+TimerEntry TimerEntrySleepQueue::top() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    if (sleep_queue_.empty()) {
+        return TimerEntry{nullptr, 0};
+    }
+    return sleep_queue_.top();
+}
+
+
+std::string Scheduler::get_sleep_queue_snapshot() {
+    std::lock_guard<std::mutex> lock(scheduler_mtx_);
+    return sleep_queue_.print_sleep_queue();
+}
+
+CpuUtilization Scheduler::cpu_utilization() const {
+    unsigned used = 0;
+    for (const auto &runner : running_)
+        if (runner) ++used;
+
+    unsigned total = cfg_.num_cpu;
+    double pct = (total > 0)
+        ? (static_cast<double>(used) / total * 100.0)
+        : 0.0;
+
+    return CpuUtilization{used, total, pct};
+}
+
+
+void Scheduler::enqueue_ready(std::shared_ptr<Process> p) {
+    if (!p) return;
+
+    // Acquire short-term lock to inspect running_ and queue safely
+    std::lock_guard<std::mutex> lock(short_term_mtx_);
+
+    // Don't enqueue finished or waiting processes
+    if (p->is_finished() || p->is_waiting()) return;
+
+    // If it's already running on any core, don't enqueue
+    for (const auto &r : running_) {
+        if (r && r == p) return;
+    }
+
+    // If your ready_queue supports dedup check, you can also ask it here.
+    p->set_state(ProcessState::READY);
+    ready_queue_.send(p);
+}

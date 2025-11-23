@@ -183,31 +183,11 @@ int CLI::run() {
     }
     else if (cmd == "util") {
       if (require_init()) {
-        std::string snap = scheduler_->snapshot();
-        // Parse CPU states section
-        size_t cpuStart = snap.find("[CPU States]:");
-        size_t cpuEnd = snap.find("[Finished Processes]:");
-        unsigned used = 0;
-        if (cpuStart != std::string::npos) {
-          if (cpuEnd == std::string::npos) cpuEnd = snap.size();
-          std::string section = snap.substr(cpuStart, cpuEnd - cpuStart);
-          std::istringstream iss(section);
-          std::string line2;
-          while (std::getline(iss, line2)) {
-            // In snapshot, running lines list processes; header or empty lines are ignored.
-            if (!line2.empty() &&
-                line2.find("[CPU States]") == std::string::npos)
-            {
-              // If it looks like a running process row (has "Core:")
-              if (line2.find("Core: ") != std::string::npos) ++used;
-            }
-          }
-        }
-        unsigned total = scheduler_->get_cpu_count();
-        unsigned pct = total ? (used * 100 / total) : 0;
-        std::cout << "CPU utilization: " << pct << "%\n";
-        std::cout << "Cores used: " << used << "\n";
-        std::cout << "Cores available: " << total << "\n";
+        CpuUtilization util = scheduler_->cpu_utilization();
+
+        std::cout << "CPU utilization: " << static_cast<int>(util.percent) << "%\n"
+                  << "Cores used: " << util.used << "\n"
+                  << "Cores available: " << util.total << "\n";
       }
     }
     else if (cmd == "scheduler-stop") {

@@ -51,13 +51,13 @@ public:
   void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
   
   // === Pre-Post Scheduling API ===
-  void sleep_process(std::shared_ptr<Process> p, uint64_t duration);
+  
 
 
   // === Diagnostics ===
   std::string snapshot(); // returns screen-ls string
   uint32_t current_tick() const;
-  std::string cpu_utilization();
+  CpuUtilization cpu_utilization() const;
   // === Singleton Accessor ===
   Scheduler(Scheduler &other) = delete;       // Should not be copied
   void operator=(const Scheduler &) = delete; // Should not be assigned
@@ -74,8 +74,8 @@ public:
   uint32_t get_scheduler_tick_delay() const;
   std::string get_sched_snapshots();
   void setSchedulingPolicy(SchedulingPolicy policy_);
-  std::vector<TimerEntry> get_sleep_queue_snapshot() const;
-
+  std::string get_sleep_queue_snapshot();
+  
 
 private:
   // === Scheduler Internal Methods ===
@@ -87,9 +87,9 @@ private:
   void timer_check();
   void log_status();
   void pause_check();
-  std::string print_sleep_queue() const;
+  void enqueue_ready(std::shared_ptr<Process> p);
   // === Internal Scheduler State === 
-  mutable std::mutex sleep_queue_mtx_;
+
   Config cfg_;
   std::thread sched_thread_;
   std::atomic<uint32_t> tick_{0};
@@ -107,7 +107,7 @@ private:
   DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
   Channel<std::shared_ptr<Process>> blocked_queue_;                                       // sleeping or page-faulted, medium-term scheduler
   Channel<std::shared_ptr<Process>> swapped_queue_;                                       // swapped to backing store, medium-term scheduler
-  std::priority_queue<TimerEntry> sleep_queue_;  // sleep process, timer
+  TimerEntrySleepQueue sleep_queue_;  // sleep process, timer
 
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
@@ -123,5 +123,5 @@ private:
   // === Utilities ===
   void initialize_vectors();
   void cleanup_finished_processes(uint32_t cpu_id);
-  void queue_sleep(std::shared_ptr<Process> p, uint64_t wake_tick);
+  
 };

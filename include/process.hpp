@@ -52,6 +52,7 @@ public:
   uint32_t id() const;
   std::string name() const;
   ProcessState state();
+  bool finished_logged = false;
 
   // === Metadata accessors ===
   std::vector<std::string> get_logs(); // thread-safe snapshot
@@ -74,7 +75,7 @@ public:
   void set_core_id(uint32_t core);
   uint32_t get_core_id() const;
   void set_name(std::string);
-
+  ProcessState get_state();
   // === Helpers ===
   uint32_t get_total_instructions() const;
   uint32_t get_executed_instructions() const;

@@ -124,15 +124,24 @@ DynamicVictimChannel::DynamicVictimChannel(SchedulingPolicy algo)
 }
 
 std::string DynamicVictimChannel::snapshot() {
-  std::lock_guard<std::mutex> lock(messageMtx_);
-  std::stringstream ss;
+    std::lock_guard<std::mutex> lock(messageMtx_);
+    std::stringstream ss;
 
-  ss << "DVC Snapshot: " << victimQ_.size() << " processes\n";
-  for (const auto &proc : victimQ_) {
-      ss << "PID=" << proc->id() << ", Name=" << proc->name() << ", " << " LA=" << proc->last_active_tick << "\n";
-  }
-  return ss.str();
+  
+    uint16_t count = 0;
+    for (const auto &proc : victimQ_) {
+        if (count++ >= 10) break; // limit
+        ss << proc->name() << "\t"
+           << "PID=" << proc->id()  << "\t" 
+           << "LA=" << proc->last_active_tick << "\n";
+    }
+
+    if (victimQ_.size() > 10)
+        ss << "... (" << victimQ_.size() - 10 << " more)\n";
+
+    return ss.str();
 }
+
 
 void DynamicVictimChannel::send(const std::shared_ptr<Process> &msg) {
   {

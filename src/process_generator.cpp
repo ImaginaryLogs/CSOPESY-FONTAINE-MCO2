@@ -400,6 +400,6 @@ void ProcessGenerator::loop() {
 
     // sleep just a bit to avoid busy-waiting
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(cfg_.scheduler_tick_delay / 4));
+        std::chrono::milliseconds(cfg_.scheduler_tick_delay * 4 + 10));
   }
 }

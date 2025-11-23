@@ -2,6 +2,7 @@
 #include "../include/scheduler.hpp"
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <ctime>
 
@@ -22,17 +23,9 @@ static std::string now_string() {
 
 // derive utilization by counting idle lines from the scheduler state snapshot
 static void derive_utilization(Scheduler &sched, int &used, int &total) {
-
-  total = static_cast<int>(sched.get_cpu_count());
-  std::string snap = sched.get_sched_snapshots();
-  int idle = 0;
-  std::istringstream iss(snap);
-
-  for (std::string line; std::getline(iss, line); ) {
-    if (line.find("IDLE") != std::string::npos) ++idle;
-  }
-
-  used = std::max(0, total - idle);
+    auto u = sched.cpu_utilization();
+    used = u.used;
+    total = u.total;
 }
 
 std::string Reporter::build_report() {
@@ -43,6 +36,7 @@ std::string Reporter::build_report() {
   int percent = (total>0) ? (used*100/total) : 0;
 
   std::ostringstream oss;
+  std::cout << "HAHAHA1\n";
   oss << "CPU utilization: " << percent << "%\n"
       << "Cores used: " << used << "\n"
       << "Cores available: " << available << "\n\n"

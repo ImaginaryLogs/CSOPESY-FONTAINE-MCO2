@@ -2,23 +2,27 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <bits/stdc++.h>
 
-void FinishedMap::insert(ProcessPtr p, uint32_t finished_tick){
-  std::scoped_lock<std::mutex> lock(this->mutex_);
-  std::string name = p->name();
-
-  if (finished_by_name_.count(name)) {
-      rename_process(p);
+void FinishedMap::insert(ProcessPtr p, uint32_t finished_tick) {
+  std::scoped_lock lock(this->mutex_);
+  if (!p) return;
+  if (p->finished_logged) return;   // needs a bool in Process
+  p->finished_logged = true;
+  if (contains(p->name())) {
+    if (finished_by_name_[p->name()] == p)
+      return; // Already inserted, skip duplicate
+    rename_process(p);
   } else {
-      duplicate_count_[name] = 0;
+    duplicate_count_[p->name()] = 0;
   }
 
   time_t now = std::time(nullptr);
-
-  finished_by_name_[name] = p;
+  finished_by_name_[p->name()] = p;
   finished_by_tick_.emplace(finished_tick, p);
   finished_by_time_.emplace(now, p);
-};
+}
+
 
 ProcessPtr FinishedMap::get_by_name(const std::string& name) {
     std::scoped_lock<std::mutex> lock(this->mutex_);
@@ -34,28 +38,29 @@ bool FinishedMap::contains(const std::string& name) {
 
 // Return ordered list of finished processes (most recent first)
 std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> FinishedMap::ordered() {
-  std::scoped_lock<std::mutex> lock(mutex_);
-  std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> result;
-  result.reserve(finished_by_tick_.size());
-
-  // Match each process' tick with its finish time
-  for (auto& [tick, weak] : finished_by_tick_) {
-      if (auto proc = weak.lock()) {
-          // Look up its recorded time (if found)
-          time_t t = 0;
-          for (auto it = finished_by_time_.begin(); it != finished_by_time_.end(); ++it) {
-              if (auto p2 = it->second.lock()) {
-                  if (p2 == proc) {
-                      t = it->first;
-                      break;
-                  }
-              }
-          }
-          result.emplace_back(tick, proc, t);
-      }
-  }
-  return result;
+    std::vector<std::tuple<uint32_t, ProcessPtr, time_t>> result;
+    {
+        
+        result.reserve(finished_by_tick_.size());
+        for (auto& [tick, weak] : finished_by_tick_) {
+            if (auto proc = weak.lock()) {
+                time_t t = 0;
+                if (auto it = std::find_if(finished_by_time_.begin(),
+                                           finished_by_time_.end(),
+                                           [&](auto &pair){
+                                               auto p2 = pair.second.lock();
+                                               return p2 && p2 == proc;
+                                           }); it != finished_by_time_.end()) {
+                    t = it->first;
+                }
+                result.emplace_back(tick, proc, t);
+            }
+        }
+    }
+    // lock released here — safe to format or sort outside
+    return result;
 }
+
 
 // Clear all finished processes
 void FinishedMap::clear() {
@@ -73,41 +78,59 @@ size_t FinishedMap::size() {
 
 
 std::string FinishedMap::snapshot() {
-  auto ordered_list = ordered();
-  std::ostringstream oss;
-  uint16_t counter = 0;
+    auto ordered_list = ordered();
+    std::ostringstream oss;
+    uint16_t counter = 0;
 
-  oss << "Name\tFinished Time\tTick\tProgress\t#\n";
-  oss << "------------------------------------------------------\n";
+    if (ordered_list.empty()) return "";
 
-  for (const auto& [tick, proc, finish_time] : ordered_list) {
-      std::tm tm_buf{};
-      localtime_r(&finish_time, &tm_buf);
+    oss << "Name\tFinished Time\tTick\tProgress\t#\n";
+    oss << "------------------------------------------------------\n";
 
-      oss << proc->name() << "\t"
-          << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
-          << "(TICK " << tick << ")\t"
-          << proc->get_executed_instructions() << " / "
-          << proc->get_total_instructions() << "\t"
-          << counter++ << "\n";
-  }
+    for (const auto& [tick, proc, finish_time] : ordered_list) {
+        if (counter >= 10) break; // <-- limit to top 10
 
-  return oss.str();
+        std::tm tm_buf{};
+        localtime_r(&finish_time, &tm_buf);
+
+        oss << proc->name() << "\t"
+            << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
+            << "(TICK " << tick << ")\t"
+            << proc->get_executed_instructions() << " / "
+            << proc->get_total_instructions() << "\t"
+            << counter++ << "\n";
+    }
+
+    if (ordered_list.size() > 10)
+        oss << "... (" << ordered_list.size() - 10 << " more)\n";
+
+    return oss.str();
 }
 
-// Helper: rename process if duplicate
+
 std::string FinishedMap::rename_process(std::shared_ptr<Process> process) {
     std::string name = process->name();
 
-    if (finished_by_name_.count(name)) {
-        uint32_t dupIndex = ++duplicate_count_[name];
-        std::ostringstream oss;
-        oss << name << "_(" << dupIndex << ")";
-        name = oss.str();
-        process->set_name(name);
-    } else {
-        duplicate_count_[name] = 0;
+    // Base name without any suffix like _(1)
+    std::string base_name = name;
+    auto pos = name.find("_(");
+    if (pos != std::string::npos)
+        base_name = name.substr(0, pos);
+
+    // Check how many times base_name has appeared
+    uint32_t dupIndex = ++duplicate_count_[base_name];
+
+    // If it's the first time, don't rename
+    if (dupIndex == 1) {
+        duplicate_count_[base_name] = 1;  // first seen
+        return name;
     }
 
-    return name;
+    // Otherwise, rename with incremented index
+    std::ostringstream oss;
+    oss << base_name << "_(" << (dupIndex - 1) << ")";
+    std::string new_name = oss.str();
+
+    process->set_name(new_name);
+    return new_name;
 }

@@ -33,7 +33,9 @@ static std::string inst_type_to_string(InstructionType type) {
   }
 }
 
-
+ProcessState Process::get_state(){
+  return this->m_state;
+};
 
 /**
  * Convert process state enum to readable string
