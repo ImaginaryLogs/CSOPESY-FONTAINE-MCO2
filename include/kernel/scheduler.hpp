@@ -72,7 +72,8 @@ public:
   void pause();
   void resume();
   bool is_paused() const;
-  void tick_barrier_sync();
+  void start_barrier_sync(uint32_t n);
+  void tick_barrier_sync(std::string who, int barrier_index);
   void stop_barrier_sync();
 
   uint32_t get_cpu_count() const;
@@ -103,7 +104,10 @@ private:
   std::atomic<bool> sched_running_{false};
   std::mutex short_term_mtx_;
   std::mutex scheduler_mtx_;
-  std::unique_ptr<std::barrier<>> tick_sync_barrier_;
+  std::mutex debug_mtx_;
+  
+  std::unique_ptr<std::barrier<>> startup_barrier_;
+  std::unique_ptr<std::barrier<BarrierPrint>> tick_sync_barrier_;
   Channel<std::string> log_queue;
   std::string cpu_state_snapshot();
   
@@ -112,7 +116,7 @@ private:
   DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
   Channel<std::shared_ptr<Process>> blocked_queue_;                                       // sleeping or page-faulted, medium-term scheduler
   Channel<std::shared_ptr<Process>> swapped_queue_;                                       // swapped to backing store, medium-term scheduler
-  TimerEntrySleepQueue sleep_queue_;  // sleep process, timer
+  TimerEntrySleepQueue sleep_queue_;                                                      // sleep process, timer
 
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
@@ -122,8 +126,6 @@ private:
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
   std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
-
-  // === Scheduler State ===
 
   // === Utilities ===
   void initialize_vectors();

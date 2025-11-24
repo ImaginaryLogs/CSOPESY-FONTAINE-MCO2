@@ -2,6 +2,8 @@
 #include "processes/process.hpp"
 #include <sstream>
 #include <iostream>
+#include <syncstream>
+#include <format>
 
 // This files just contains Scheduler's Utility functions
 
@@ -47,12 +49,42 @@ void Scheduler::setSchedulingPolicy(SchedulingPolicy policy_){
   this->ready_queue_.setPolicy(policy_);
 }
 
-void Scheduler::tick_barrier_sync()
+void Scheduler::tick_barrier_sync(std::string who, int barrier_index)
 {
+  {
+    const std::lock_guard<std::mutex> lock(debug_mtx_);
+    std::osyncstream(std::cout) << "[WAIT -->] " << who
+                  << " B#" << barrier_index
+                  << "\n";
+  }
   this->tick_sync_barrier_->arrive_and_wait();
+  {
+    const std::lock_guard<std::mutex> lock(debug_mtx_);
+    std::osyncstream(std::cout) << "\e[0;30m[EXIT <--] " << who
+              << " B#" << barrier_index
+              << "\e[0m	\n";
+  }
 }
 
 uint32_t Scheduler::get_cpu_count() const { return cfg_.num_cpu; };
 
-
 uint32_t Scheduler::get_scheduler_tick_delay() const { return cfg_.scheduler_tick_delay; }
+
+
+CpuUtilization Scheduler::cpu_utilization() const {
+    unsigned used = 0;
+    for (const auto &runner : running_)
+        if (runner) ++used;
+
+    unsigned total = cfg_.num_cpu;
+    double pct = (total > 0)
+        ? (static_cast<double>(used) / total * 100.0)
+        : 0.0;
+
+    return CpuUtilization{used, total, pct};
+}
+
+void BarrierPrint::operator()() const noexcept{
+  std::osyncstream(std::cout) << std::format("=============BARRIER COMPLETE============\n");
+
+}

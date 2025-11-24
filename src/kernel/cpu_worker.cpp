@@ -1,9 +1,11 @@
 #include "kernel/cpu_worker.hpp"
 #include "processes/process.hpp"
 #include "kernel/scheduler.hpp"
+#include "util.hpp"
 #include <iostream>
+#include <syncstream>
 
-#define DEBUG_CPU_WORKER true
+
 
 /**
  * NOTE:
@@ -39,36 +41,37 @@ void CPUWorker::join() {
 }
 
 void CPUWorker::loop() {
+  std::string id_str = "CPU " + std::to_string((int)this->id_);
+  const char * id = id_str.c_str();
   while (running_.load()) {
 
-    while (sched_.is_paused()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    sched_.tick_barrier_sync();
-
+    while (sched_.is_paused()) 
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    
+    sched_.tick_barrier_sync(id_str, 1);
+    DEBUG_PRINT(DEBUG_CPU_WORKER, "%s grabs a process from cpu", id);
     auto process = sched_.dispatch_to_cpu(this->id_);
 
     uint32_t consumed_ticks = 1; // max ticks possible in one execute_tick call
 
-    // #if DEBUG_CPU_WORKER
-    // std::cout << "CPU Worker executing for CORE " << this->id_ << " at tick \n";
-    // #endif
-
     if (!process) {
-      sched_.tick_barrier_sync();
-      sched_.tick_barrier_sync();
+      DEBUG_PRINT(DEBUG_CPU_WORKER, "%s has none at the moment.", id);
+      sched_.tick_barrier_sync(id_str, 2);
+      sched_.tick_barrier_sync(id_str, 3);
       continue;
     }
-    
-
+    DEBUG_PRINT(DEBUG_CPU_WORKER, "%s executing a process", id);
     
     ProcessReturnContext context = process->execute_tick(
         sched_.current_tick(), 
         sched_.get_scheduler_tick_delay(),
         consumed_ticks);
-    //std::cout << "Tick "<< sched_.current_tick() << " inst: " << process->get_executed_instructions() << " out of " << process->get_total_instructions() << "\n";
+    std::string state = process->get_state_string();
+    DEBUG_PRINT(DEBUG_CPU_WORKER, "%s executed %u with status %s\n", id, process->get_executed_instructions(), state.c_str());
+  
     if (is_yielded(context)) sched_.release_cpu_interrupt(this->id_, process, context);
-
-    sched_.tick_barrier_sync();
-    sched_.tick_barrier_sync(); // Here, scheduler increases timer. Second tick barrier is essential
+    
+    sched_.tick_barrier_sync(id_str, 2); // Here, scheduler increases timer. Second tick barrier is essential
+    sched_.tick_barrier_sync(id_str, 3);
   }
 }

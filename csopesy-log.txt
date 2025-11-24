@@ -629,3 +629,115 @@ p06	05-11-2025 20-48-29	PID=6	RR=4	LA=154	Core: 3	3 / 3137
 
 ============================================
 
+===== Report at 2025-11-24 05:29:37 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:29:46 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:30:01 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:33:00 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 24295105
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+

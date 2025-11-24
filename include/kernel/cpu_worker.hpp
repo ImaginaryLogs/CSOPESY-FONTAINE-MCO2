@@ -20,9 +20,8 @@ public:
 
 private:
   void loop();
-  uint32_t id_;
-  Scheduler &sched_;
-  std::thread thread_;
-  std::atomic<bool> running_{false};
-
+  uint32_t id_;                       // CPU ID
+  Scheduler &sched_;                  // Assigned Scheduler
+  std::thread thread_;                // Assigned Thread
+  std::atomic<bool> running_{false};  // Is CPU Worker Running?
 };

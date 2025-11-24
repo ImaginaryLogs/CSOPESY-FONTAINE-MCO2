@@ -27,3 +27,19 @@ struct CpuUtilization {
         return oss.str();
     }
 };
+
+class BarrierPrint {
+  public:
+    void operator()() const noexcept;
+  private:
+    std::atomic<int> stage;
+};
+
+#define DEBUG_PRINT(condition, msg, ...) \
+  do { \
+    printf("[%s:%s():%d] " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__); \
+    break;\
+  } while (condition);
+
+#define DEBUG_SCHEDULER false
+#define DEBUG_CPU_WORKER false

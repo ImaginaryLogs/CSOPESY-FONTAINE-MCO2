@@ -202,6 +202,13 @@ int CLI::run() {
         reporter_->write_log("csopesy-log.txt");
       }
     }
+    else if (cmd == "help") {
+      std::cout << "initialize: initializes the system with config.\n" 
+                << "scheduler-start: starts the scheduler"
+                << "util: gets cpu utilization"
+                << "report-util: writes the report, saves to file."
+                << "scheduler-stop: stops the scheduler";
+    }
     else {
       std::cout << "Unknown command: " << line << "\n";
     }
