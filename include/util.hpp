@@ -31,15 +31,20 @@ struct CpuUtilization {
 class BarrierPrint {
   public:
     void operator()() const noexcept;
-  private:
-    std::atomic<int> stage;
+
 };
 
-#define DEBUG_PRINT(condition, msg, ...) \
-  do { \
-    printf("[%s:%s():%d] " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__); \
-    break;\
-  } while (condition);
 
+//#define DEBUG 
 #define DEBUG_SCHEDULER false
 #define DEBUG_CPU_WORKER false
+
+#ifdef DEBUG
+    #warning "Debug-printing is active"
+    #define DEBUG_PRINT(condition, msg, ...) \
+      if (condition) \
+        printf("[%s:%s():%d] " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__);
+#else 
+    #define DEBUG_PRINT(condition, msg, ...) 
+#endif
+  

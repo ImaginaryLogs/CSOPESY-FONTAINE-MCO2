@@ -61,17 +61,44 @@ std::string DynamicVictimChannel::snapshot() {
     std::lock_guard<std::mutex> lock(messageMtx_);
     std::stringstream ss;
 
-  
+    uint16_t ui_showcount = 10;
     uint16_t count = 0;
+    uint16_t top = victimQ_.size();
+    if (!victimQ_.empty())
+      ss << "Name\tPID\tLA\t#\n"
+         << "----------------------------------------\n";
     for (const auto &proc : victimQ_) {
-        if (count++ >= 10) break; // limit
+        if (count++ >= ui_showcount) break; // limit
         ss << proc->name() << "\t"
-           << "PID=" << proc->id()  << "\t" 
-           << "LA=" << proc->last_active_tick << "\n";
+           << proc->id()  << "\t" 
+           << proc->last_active_tick << "\t"
+           << top << "\n";
+        --top;
     }
 
-    if (victimQ_.size() > 10)
-        ss << "... (" << victimQ_.size() - 10 << " more)\n";
+    if (victimQ_.size() > ui_showcount)
+        ss << "... (" << victimQ_.size() - ui_showcount << " more)\n";
+
+    return ss.str();
+}
+
+
+std::string DynamicVictimChannel::print() {
+    std::lock_guard<std::mutex> lock(messageMtx_);
+    std::stringstream ss;
+
+    uint16_t ui_showcount = 10;
+    uint16_t top = victimQ_.size();
+    if (!victimQ_.empty())
+      ss << "Name\tPID\tLA\t#\n"
+         << "----------------------------------------\n";
+    for (const auto &proc : victimQ_) {
+        ss << proc->name() << "\t"
+           << proc->id()  << "\t" 
+           << proc->last_active_tick << "\t"
+           << top << "\n";
+        --top;
+    }
 
     return ss.str();
 }
@@ -107,4 +134,10 @@ std::shared_ptr<Process> DynamicVictimChannel::receiveVictim() {
 bool DynamicVictimChannel::isEmpty() {
   std::lock_guard<std::mutex> lock(messageMtx_);
   return victimQ_.empty();
+}
+
+
+size_t DynamicVictimChannel::size(){
+  std::lock_guard<std::mutex> lock(messageMtx_);
+  return victimQ_.size();
 }

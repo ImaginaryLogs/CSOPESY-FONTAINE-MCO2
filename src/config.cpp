@@ -45,6 +45,10 @@ Config load_config(const std::string &path) {
     else if (key == "delay-per-exec") cfg.delay_per_exec = static_cast<uint32_t>(std::stoul(value));
     else if (key == "snapshot-cooldown") cfg.snapshot_cooldown = static_cast<uint32_t>(std::stoul(value));
     else if (key == "scheduler-tick-delay") cfg.scheduler_tick_delay = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "max-generated-processes") cfg.max_generated_processes = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "save-snapshot-file-rate") cfg.save_snapshot_file_rate = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "remove-finished") cfg.remove_finished = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "remove-finished-capacity") cfg.remove_finished_capacity = static_cast<uint32_t>(std::stoul(value));
   }
   return cfg;
 }

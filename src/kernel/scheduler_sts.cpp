@@ -63,7 +63,7 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
   if (p->is_finished() || context.state == ProcessState::FINISHED){
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
-    finished_.insert(p, tick_ + 1);
+    finished_queue_.insert(p, tick_ + 1);
     return;
   } else if (p->is_waiting() || context.state == ProcessState::WAITING) {
     p->set_state(ProcessState::WAITING);

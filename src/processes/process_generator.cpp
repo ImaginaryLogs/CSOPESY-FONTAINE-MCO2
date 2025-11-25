@@ -383,7 +383,7 @@ void ProcessGenerator::loop() {
 
   while (running_.load()) {
     uint32_t current_tick = sched_.current_tick();
-    if (current_tick - last_generated_tick >= cfg_.batch_process_freq) {
+    if (sched_.get_total_active_processes() <=cfg_.max_generated_processes && current_tick - last_generated_tick >= cfg_.batch_process_freq) {
       // generate one process
       uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
       uint32_t estimated_size = 0;

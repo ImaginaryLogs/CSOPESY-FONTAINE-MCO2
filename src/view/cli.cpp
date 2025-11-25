@@ -155,13 +155,15 @@ int CLI::run() {
 
     if (cmd == "exit") {
       std::cout << "Goodbye.\n";
+      scheduler_->resume();
+      
       break;
     }
     else if (cmd == "initialize") {
       initialize_system();
     }
     else if (cmd == "scheduler-start") {
-      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n"; }
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n"; scheduler_->resume(); }
     }
     else if (cmd == "pause") {
       if (require_init()) { scheduler_->pause(); std::cout << "Paused.\n"; }

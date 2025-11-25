@@ -2,14 +2,14 @@
 # Compiler and flags
 # ===============================
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -pthread -O2
+CXXFLAGS := -std=c++20 -Wall -pthread -O2 -fconcepts-diagnostics-depth=2
 INCLUDE := -I include
 
 # ===============================
 # Optional Debug / Sanitizer flags
 # ===============================
 DEBUG_FLAGS := -g -O0
-ASAN_FLAGS := -fsanitize=address -fno-omit-frame-pointer
+ASAN_FLAGS := -fsanitize=address -fno-omit-frame-pointer 
 
 # Directories
 SRC_DIR := src

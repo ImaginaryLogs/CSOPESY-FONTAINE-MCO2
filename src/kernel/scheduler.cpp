@@ -20,7 +20,8 @@ Scheduler::Scheduler(const Config &cfg)
       ready_queue_(cfg.scheduler),
       blocked_queue_(Channel<std::shared_ptr<Process>>()),
       swapped_queue_(Channel<std::shared_ptr<Process>>()),
-      finished_(FinishedMap())
+      finished_queue_(FinishedMap()),
+      log_queue(20, true)
 {
   initialize_vectors();
   this->tick_.store(1);
@@ -67,7 +68,7 @@ void Scheduler::stop(){
   #endif
 
   sched_running_.store(false);
-  paused_.store(false);
+  paused_.store(true);
   pause_cv_.notify_all();
 
   for (auto &worker : cpu_workers_) worker->stop();
@@ -109,7 +110,7 @@ void Scheduler::preemption_check()
     
       cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
       
-      std::cout << "I love\n";
+      //std::cout << "I love\n";
     }
     break;
   case FCFS:
@@ -126,7 +127,7 @@ void Scheduler::timer_check() {// Adding a sleeping process
   DEBUG_PRINT(DEBUG_SCHEDULER, "TIMER CHECK");
   while (!sleep_queue_.isEmpty() && sleep_queue_.top().wake_tick <= now) {
       auto entry = sleep_queue_.receive();
-      std::cout << entry.process << " " << entry.wake_tick << "\n";
+      //::cout << entry.process << " " << entry.wake_tick << "\n";
       if (!entry.process) {
           std::cerr << "[WARN] timer_check: null TimerEntry at wake_tick=" << entry.wake_tick << "\n";
           continue;
@@ -175,7 +176,7 @@ void Scheduler::tick_loop()
     }
     // PHASE
     Scheduler::tick_barrier_sync("KERNEL", 3);
-    std::cout << snapshot();
+    //std::cout << snapshot();
     Scheduler::log_status();
     std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
   }

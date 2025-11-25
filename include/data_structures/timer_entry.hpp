@@ -36,13 +36,15 @@ struct TimerEntryCompare {
 class TimerEntrySleepQueue {
   public:
     std::vector<TimerEntry> get_sleep_queue_snapshot() const;
-    std::string print_sleep_queue() const;
+    std::string snapshot() const;
+    std::string print() const;
     void send(std::shared_ptr<Process> p, uint64_t wake_tick) ;
     TimerEntry receive();
     bool isEmpty() const;
     TimerEntry top() const;
+    size_t size() const;
   private:
-    std::priority_queue<TimerEntry> sleep_queue_;
+    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<TimerEntry>> sleep_queue_;
     mutable std::mutex sleep_queue_mtx_;
 };
 

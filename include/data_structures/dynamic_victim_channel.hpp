@@ -39,10 +39,12 @@ class DynamicVictimChannel {
     void send(const std::shared_ptr<Process>& msg);
     std::shared_ptr<Process> receiveNext();
     std::shared_ptr<Process> receiveVictim();
+    size_t size();
 
     // Accessor
     bool isEmpty();
     std::string snapshot();
+    std::string print();
 
   protected:
     std::multiset<std::shared_ptr<Process>, ProcessCmpFn> victimQ_;

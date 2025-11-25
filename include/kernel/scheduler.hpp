@@ -7,6 +7,7 @@
 #include "../data_structures/channel.hpp"
 #include "../data_structures/dynamic_victim_channel.hpp"
 #include "../data_structures/timer_entry.hpp"
+#include "../data_structures/buffered_channel.hpp"
 #include "kernel/cpu_worker.hpp"
 
 #include <atomic>
@@ -81,7 +82,8 @@ public:
   std::string get_sched_snapshots();
   void setSchedulingPolicy(SchedulingPolicy policy_);
   std::string get_sleep_queue_snapshot();
-  
+  size_t get_total_active_processes();
+  void save_snapshot();
 
 private:
   // === Scheduler Internal Methods ===
@@ -108,7 +110,7 @@ private:
   
   std::unique_ptr<std::barrier<>> startup_barrier_;
   std::unique_ptr<std::barrier<BarrierPrint>> tick_sync_barrier_;
-  Channel<std::string> log_queue;
+  BufferedChannel<std::string> log_queue;
   std::string cpu_state_snapshot();
   
   // === Queues ===
@@ -121,11 +123,12 @@ private:
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
   std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
-  FinishedMap finished_;      // finished processes, indexed by cpu id
+  FinishedMap finished_queue_;      // finished processes, indexed by cpu id
   
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
   std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
+  std::atomic<uint32_t> total_active_processes;
 
   // === Utilities ===
   void initialize_vectors();

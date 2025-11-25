@@ -36,7 +36,6 @@ std::string Reporter::build_report() {
   int percent = (total>0) ? (used*100/total) : 0;
 
   std::ostringstream oss;
-  std::cout << "HAHAHA1\n";
   oss << "CPU utilization: " << percent << "%\n"
       << "Cores used: " << used << "\n"
       << "Cores available: " << available << "\n\n"

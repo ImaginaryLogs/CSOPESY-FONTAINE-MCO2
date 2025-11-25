@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <format>
 #include "../include/data_structures/timer_entry.hpp"
 
 std::vector<TimerEntry> TimerEntrySleepQueue::get_sleep_queue_snapshot() const {
@@ -15,19 +16,34 @@ std::vector<TimerEntry> TimerEntrySleepQueue::get_sleep_queue_snapshot() const {
     return snapshot;
 }
 
-std::string TimerEntrySleepQueue::print_sleep_queue() const {
+std::string TimerEntrySleepQueue::snapshot() const {
     std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
-    std::priority_queue<TimerEntry> copy = sleep_queue_;
+    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<TimerEntry>> copy = sleep_queue_;
     std::ostringstream oss;
+    uint16_t ui_showlimit = 10;
+    uint16_t counter = 0;
+    auto top = copy.size();
+    if (!copy.empty())
+        oss << "Tick\tName\tPID\t#\n"
+            << "------------------------------\n";
     while (!copy.empty()) {
         const auto &t = copy.top();
         if (t.process)
-            oss << t.process->name()
-                << "\tPID:" << t.process->id() << "\tWT " << t.wake_tick << "\n";
+            oss << t.wake_tick << "t\t"
+                << t.process->name() << "\t"
+                << t.process->id() << "\t"
+                << top << "\n";
         else
             oss << "  [NULL process] wakes at " << t.wake_tick << "\n";
         copy.pop();
+        counter++;
+        top--;
+        if (counter >= ui_showlimit)
+            break;
+        
     }
+
+    oss << ((counter > ui_showlimit) ? std::format("... and {} more \n", sleep_queue_.size() - ui_showlimit) : "\n");
     return oss.str();
 }
 
@@ -63,4 +79,34 @@ TimerEntry TimerEntrySleepQueue::top() const {
         return TimerEntry{nullptr, 0};
     }
     return sleep_queue_.top();
+}
+
+size_t TimerEntrySleepQueue::size() const {
+    return sleep_queue_.size();
+}
+
+std::string TimerEntrySleepQueue::print() const {
+    std::lock_guard<std::mutex> lock(sleep_queue_mtx_);
+    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<TimerEntry>> copy = sleep_queue_;
+    std::ostringstream oss;
+    uint16_t ui_showlimit = 10;
+    auto top = copy.size();
+    if (!copy.empty())
+        oss << "Tick\tName\tPID\t#\n"
+            << "------------------------------\n";
+    while (!copy.empty()) {
+        const auto &t = copy.top();
+        if (t.process)
+            oss << t.wake_tick << "t\t"
+                << t.process->name() << "\t"
+                << t.process->id() << "\t"
+                << top << "\n";
+        else
+            oss << "  [NULL process] wakes at " << t.wake_tick << "\n";
+        copy.pop();
+        top--;
+    }
+
+    oss << "\n";
+    return oss.str();
 }

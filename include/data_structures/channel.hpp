@@ -25,6 +25,8 @@ class Channel {
     bool isEmpty();
     std::string snapshot();
     void empty();
+    std::string print();
+    size_t size();
 
   private:
     std::deque<T> q_;
@@ -32,6 +34,10 @@ class Channel {
     std::condition_variable messageCv_;
 };
 
+template<typename T> 
+size_t Channel<T>::size(){
+  return q_.size();
+}
 
 template<typename T>
 void Channel<T>::send(const T& message) {
@@ -98,6 +104,30 @@ inline std::string Channel<std::shared_ptr<Process>>::snapshot() {
 
     if (q_.size() > 10)
         oss << "... (" << q_.size() - 10 << " more)\n";
+
+    return oss.str();
+}
+
+
+template<>
+inline std::string Channel<std::shared_ptr<Process>>::print() {
+    std::lock_guard<std::mutex> lock(messageMtx_);
+    std::ostringstream oss;
+    oss << "Channel Snapshot: " << q_.size() << " messages\n";
+
+    for (const auto &msg : q_) {
+
+        if (msg) {
+            oss << msg->name() << "\t"
+                << "ID: " << msg->id() << "\t"
+                << "PR: " << msg->priority << "\t"
+                << "PC: " << msg->pc << "\t"
+                << "(" << msg->get_state_string() << ")\t"
+                << "\n";
+        } else {
+            oss << " None\n";
+        }
+    }
 
     return oss.str();
 }
