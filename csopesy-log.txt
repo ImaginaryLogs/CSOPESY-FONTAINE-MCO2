@@ -1,0 +1,743 @@
+===== Report at 2025-11-05 20:47:56 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 90
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 1 messages
+p41	ID: 41	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+DVC Snapshot: 36 processes
+PID=5, Name=p05,  LA=0
+PID=6, Name=p06,  LA=0
+PID=7, Name=p07,  LA=0
+PID=8, Name=p08,  LA=0
+PID=9, Name=p09,  LA=0
+PID=10, Name=p10,  LA=0
+PID=11, Name=p11,  LA=0
+PID=12, Name=p12,  LA=0
+PID=13, Name=p13,  LA=0
+PID=14, Name=p14,  LA=0
+PID=15, Name=p15,  LA=0
+PID=16, Name=p16,  LA=0
+PID=17, Name=p17,  LA=0
+PID=18, Name=p18,  LA=0
+PID=19, Name=p19,  LA=0
+PID=20, Name=p20,  LA=0
+PID=21, Name=p21,  LA=0
+PID=22, Name=p22,  LA=0
+PID=23, Name=p23,  LA=0
+PID=24, Name=p24,  LA=0
+PID=25, Name=p25,  LA=0
+PID=26, Name=p26,  LA=0
+PID=27, Name=p27,  LA=0
+PID=28, Name=p28,  LA=0
+PID=29, Name=p29,  LA=0
+PID=30, Name=p30,  LA=0
+PID=31, Name=p31,  LA=0
+PID=32, Name=p32,  LA=0
+PID=33, Name=p33,  LA=0
+PID=34, Name=p34,  LA=0
+PID=35, Name=p35,  LA=0
+PID=36, Name=p36,  LA=0
+PID=37, Name=p37,  LA=0
+PID=38, Name=p38,  LA=0
+PID=39, Name=p39,  LA=0
+PID=40, Name=p40,  LA=0
+
+[CPU States]:
+p01	05-11-2025 20-47-56	PID=1	RR=4	LA=49	Core: 0	1 / 3857
+p02	05-11-2025 20-47-56	PID=2	RR=4	LA=50	Core: 1	1 / 3896
+p03	05-11-2025 20-47-56	PID=3	RR=4	LA=51	Core: 2	1 / 3406
+p04	05-11-2025 20-47-56	PID=4	RR=4	LA=52	Core: 3	1 / 2832
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-05 20:48:09 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 212
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 1 messages
+p162	ID: 162	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+DVC Snapshot: 157 processes
+PID=7, Name=p07,  LA=0
+PID=8, Name=p08,  LA=0
+PID=9, Name=p09,  LA=0
+PID=10, Name=p10,  LA=0
+PID=11, Name=p11,  LA=0
+PID=12, Name=p12,  LA=0
+PID=13, Name=p13,  LA=0
+PID=14, Name=p14,  LA=0
+PID=15, Name=p15,  LA=0
+PID=16, Name=p16,  LA=0
+PID=17, Name=p17,  LA=0
+PID=18, Name=p18,  LA=0
+PID=19, Name=p19,  LA=0
+PID=20, Name=p20,  LA=0
+PID=21, Name=p21,  LA=0
+PID=22, Name=p22,  LA=0
+PID=23, Name=p23,  LA=0
+PID=24, Name=p24,  LA=0
+PID=25, Name=p25,  LA=0
+PID=26, Name=p26,  LA=0
+PID=27, Name=p27,  LA=0
+PID=28, Name=p28,  LA=0
+PID=29, Name=p29,  LA=0
+PID=30, Name=p30,  LA=0
+PID=31, Name=p31,  LA=0
+PID=32, Name=p32,  LA=0
+PID=33, Name=p33,  LA=0
+PID=34, Name=p34,  LA=0
+PID=35, Name=p35,  LA=0
+PID=36, Name=p36,  LA=0
+PID=37, Name=p37,  LA=0
+PID=38, Name=p38,  LA=0
+PID=39, Name=p39,  LA=0
+PID=40, Name=p40,  LA=0
+PID=41, Name=p41,  LA=0
+PID=42, Name=p42,  LA=0
+PID=43, Name=p43,  LA=0
+PID=44, Name=p44,  LA=0
+PID=45, Name=p45,  LA=0
+PID=46, Name=p46,  LA=0
+PID=47, Name=p47,  LA=0
+PID=48, Name=p48,  LA=0
+PID=49, Name=p49,  LA=0
+PID=50, Name=p50,  LA=0
+PID=51, Name=p51,  LA=0
+PID=52, Name=p52,  LA=0
+PID=53, Name=p53,  LA=0
+PID=54, Name=p54,  LA=0
+PID=55, Name=p55,  LA=0
+PID=56, Name=p56,  LA=0
+PID=57, Name=p57,  LA=0
+PID=58, Name=p58,  LA=0
+PID=59, Name=p59,  LA=0
+PID=60, Name=p60,  LA=0
+PID=61, Name=p61,  LA=0
+PID=62, Name=p62,  LA=0
+PID=63, Name=p63,  LA=0
+PID=64, Name=p64,  LA=0
+PID=65, Name=p65,  LA=0
+PID=66, Name=p66,  LA=0
+PID=67, Name=p67,  LA=0
+PID=68, Name=p68,  LA=0
+PID=69, Name=p69,  LA=0
+PID=70, Name=p70,  LA=0
+PID=71, Name=p71,  LA=0
+PID=72, Name=p72,  LA=0
+PID=73, Name=p73,  LA=0
+PID=74, Name=p74,  LA=0
+PID=75, Name=p75,  LA=0
+PID=76, Name=p76,  LA=0
+PID=77, Name=p77,  LA=0
+PID=78, Name=p78,  LA=0
+PID=79, Name=p79,  LA=0
+PID=80, Name=p80,  LA=0
+PID=81, Name=p81,  LA=0
+PID=82, Name=p82,  LA=0
+PID=83, Name=p83,  LA=0
+PID=84, Name=p84,  LA=0
+PID=85, Name=p85,  LA=0
+PID=86, Name=p86,  LA=0
+PID=87, Name=p87,  LA=0
+PID=88, Name=p88,  LA=0
+PID=89, Name=p89,  LA=0
+PID=90, Name=p90,  LA=0
+PID=91, Name=p91,  LA=0
+PID=92, Name=p92,  LA=0
+PID=93, Name=p93,  LA=0
+PID=94, Name=p94,  LA=0
+PID=95, Name=p95,  LA=0
+PID=96, Name=p96,  LA=0
+PID=97, Name=p97,  LA=0
+PID=98, Name=p98,  LA=0
+PID=99, Name=p99,  LA=0
+PID=100, Name=p100,  LA=0
+PID=101, Name=p101,  LA=0
+PID=102, Name=p102,  LA=0
+PID=103, Name=p103,  LA=0
+PID=104, Name=p104,  LA=0
+PID=105, Name=p105,  LA=0
+PID=106, Name=p106,  LA=0
+PID=107, Name=p107,  LA=0
+PID=108, Name=p108,  LA=0
+PID=109, Name=p109,  LA=0
+PID=110, Name=p110,  LA=0
+PID=111, Name=p111,  LA=0
+PID=112, Name=p112,  LA=0
+PID=113, Name=p113,  LA=0
+PID=114, Name=p114,  LA=0
+PID=115, Name=p115,  LA=0
+PID=116, Name=p116,  LA=0
+PID=117, Name=p117,  LA=0
+PID=118, Name=p118,  LA=0
+PID=119, Name=p119,  LA=0
+PID=120, Name=p120,  LA=0
+PID=121, Name=p121,  LA=0
+PID=122, Name=p122,  LA=0
+PID=123, Name=p123,  LA=0
+PID=124, Name=p124,  LA=0
+PID=125, Name=p125,  LA=0
+PID=126, Name=p126,  LA=0
+PID=127, Name=p127,  LA=0
+PID=128, Name=p128,  LA=0
+PID=129, Name=p129,  LA=0
+PID=130, Name=p130,  LA=0
+PID=131, Name=p131,  LA=0
+PID=132, Name=p132,  LA=0
+PID=133, Name=p133,  LA=0
+PID=134, Name=p134,  LA=0
+PID=135, Name=p135,  LA=0
+PID=136, Name=p136,  LA=0
+PID=137, Name=p137,  LA=0
+PID=138, Name=p138,  LA=0
+PID=139, Name=p139,  LA=0
+PID=140, Name=p140,  LA=0
+PID=141, Name=p141,  LA=0
+PID=142, Name=p142,  LA=0
+PID=143, Name=p143,  LA=0
+PID=144, Name=p144,  LA=0
+PID=145, Name=p145,  LA=0
+PID=146, Name=p146,  LA=0
+PID=147, Name=p147,  LA=0
+PID=148, Name=p148,  LA=0
+PID=149, Name=p149,  LA=0
+PID=150, Name=p150,  LA=0
+PID=151, Name=p151,  LA=0
+PID=152, Name=p152,  LA=0
+PID=153, Name=p153,  LA=0
+PID=154, Name=p154,  LA=0
+PID=155, Name=p155,  LA=0
+PID=156, Name=p156,  LA=0
+PID=157, Name=p157,  LA=0
+PID=158, Name=p158,  LA=0
+PID=159, Name=p159,  LA=0
+PID=160, Name=p160,  LA=0
+PID=161, Name=p161,  LA=0
+PID=2, Name=p02,  LA=50
+PID=4, Name=p04,  LA=52
+
+[CPU States]:
+p01	05-11-2025 20-48-09	PID=1	RR=4	LA=49	Core: 0	2 / 3857
+p05	05-11-2025 20-48-09	PID=5	RR=4	LA=152	Core: 1	1 / 3326
+p03	05-11-2025 20-48-09	PID=3	RR=4	LA=51	Core: 2	2 / 3406
+p06	05-11-2025 20-48-09	PID=6	RR=4	LA=154	Core: 3	1 / 3137
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-05 20:48:29 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 414
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 1 messages
+p362	ID: 362	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+DVC Snapshot: 357 processes
+PID=8, Name=p08,  LA=0
+PID=9, Name=p09,  LA=0
+PID=10, Name=p10,  LA=0
+PID=11, Name=p11,  LA=0
+PID=12, Name=p12,  LA=0
+PID=13, Name=p13,  LA=0
+PID=14, Name=p14,  LA=0
+PID=15, Name=p15,  LA=0
+PID=16, Name=p16,  LA=0
+PID=17, Name=p17,  LA=0
+PID=18, Name=p18,  LA=0
+PID=19, Name=p19,  LA=0
+PID=20, Name=p20,  LA=0
+PID=21, Name=p21,  LA=0
+PID=22, Name=p22,  LA=0
+PID=23, Name=p23,  LA=0
+PID=24, Name=p24,  LA=0
+PID=25, Name=p25,  LA=0
+PID=26, Name=p26,  LA=0
+PID=27, Name=p27,  LA=0
+PID=28, Name=p28,  LA=0
+PID=29, Name=p29,  LA=0
+PID=30, Name=p30,  LA=0
+PID=31, Name=p31,  LA=0
+PID=32, Name=p32,  LA=0
+PID=33, Name=p33,  LA=0
+PID=34, Name=p34,  LA=0
+PID=35, Name=p35,  LA=0
+PID=36, Name=p36,  LA=0
+PID=37, Name=p37,  LA=0
+PID=38, Name=p38,  LA=0
+PID=39, Name=p39,  LA=0
+PID=40, Name=p40,  LA=0
+PID=41, Name=p41,  LA=0
+PID=42, Name=p42,  LA=0
+PID=43, Name=p43,  LA=0
+PID=44, Name=p44,  LA=0
+PID=45, Name=p45,  LA=0
+PID=46, Name=p46,  LA=0
+PID=47, Name=p47,  LA=0
+PID=48, Name=p48,  LA=0
+PID=49, Name=p49,  LA=0
+PID=50, Name=p50,  LA=0
+PID=51, Name=p51,  LA=0
+PID=52, Name=p52,  LA=0
+PID=53, Name=p53,  LA=0
+PID=54, Name=p54,  LA=0
+PID=55, Name=p55,  LA=0
+PID=56, Name=p56,  LA=0
+PID=57, Name=p57,  LA=0
+PID=58, Name=p58,  LA=0
+PID=59, Name=p59,  LA=0
+PID=60, Name=p60,  LA=0
+PID=61, Name=p61,  LA=0
+PID=62, Name=p62,  LA=0
+PID=63, Name=p63,  LA=0
+PID=64, Name=p64,  LA=0
+PID=65, Name=p65,  LA=0
+PID=66, Name=p66,  LA=0
+PID=67, Name=p67,  LA=0
+PID=68, Name=p68,  LA=0
+PID=69, Name=p69,  LA=0
+PID=70, Name=p70,  LA=0
+PID=71, Name=p71,  LA=0
+PID=72, Name=p72,  LA=0
+PID=73, Name=p73,  LA=0
+PID=74, Name=p74,  LA=0
+PID=75, Name=p75,  LA=0
+PID=76, Name=p76,  LA=0
+PID=77, Name=p77,  LA=0
+PID=78, Name=p78,  LA=0
+PID=79, Name=p79,  LA=0
+PID=80, Name=p80,  LA=0
+PID=81, Name=p81,  LA=0
+PID=82, Name=p82,  LA=0
+PID=83, Name=p83,  LA=0
+PID=84, Name=p84,  LA=0
+PID=85, Name=p85,  LA=0
+PID=86, Name=p86,  LA=0
+PID=87, Name=p87,  LA=0
+PID=88, Name=p88,  LA=0
+PID=89, Name=p89,  LA=0
+PID=90, Name=p90,  LA=0
+PID=91, Name=p91,  LA=0
+PID=92, Name=p92,  LA=0
+PID=93, Name=p93,  LA=0
+PID=94, Name=p94,  LA=0
+PID=95, Name=p95,  LA=0
+PID=96, Name=p96,  LA=0
+PID=97, Name=p97,  LA=0
+PID=98, Name=p98,  LA=0
+PID=99, Name=p99,  LA=0
+PID=100, Name=p100,  LA=0
+PID=101, Name=p101,  LA=0
+PID=102, Name=p102,  LA=0
+PID=103, Name=p103,  LA=0
+PID=104, Name=p104,  LA=0
+PID=105, Name=p105,  LA=0
+PID=106, Name=p106,  LA=0
+PID=107, Name=p107,  LA=0
+PID=108, Name=p108,  LA=0
+PID=109, Name=p109,  LA=0
+PID=110, Name=p110,  LA=0
+PID=111, Name=p111,  LA=0
+PID=112, Name=p112,  LA=0
+PID=113, Name=p113,  LA=0
+PID=114, Name=p114,  LA=0
+PID=115, Name=p115,  LA=0
+PID=116, Name=p116,  LA=0
+PID=117, Name=p117,  LA=0
+PID=118, Name=p118,  LA=0
+PID=119, Name=p119,  LA=0
+PID=120, Name=p120,  LA=0
+PID=121, Name=p121,  LA=0
+PID=122, Name=p122,  LA=0
+PID=123, Name=p123,  LA=0
+PID=124, Name=p124,  LA=0
+PID=125, Name=p125,  LA=0
+PID=126, Name=p126,  LA=0
+PID=127, Name=p127,  LA=0
+PID=128, Name=p128,  LA=0
+PID=129, Name=p129,  LA=0
+PID=130, Name=p130,  LA=0
+PID=131, Name=p131,  LA=0
+PID=132, Name=p132,  LA=0
+PID=133, Name=p133,  LA=0
+PID=134, Name=p134,  LA=0
+PID=135, Name=p135,  LA=0
+PID=136, Name=p136,  LA=0
+PID=137, Name=p137,  LA=0
+PID=138, Name=p138,  LA=0
+PID=139, Name=p139,  LA=0
+PID=140, Name=p140,  LA=0
+PID=141, Name=p141,  LA=0
+PID=142, Name=p142,  LA=0
+PID=143, Name=p143,  LA=0
+PID=144, Name=p144,  LA=0
+PID=145, Name=p145,  LA=0
+PID=146, Name=p146,  LA=0
+PID=147, Name=p147,  LA=0
+PID=148, Name=p148,  LA=0
+PID=149, Name=p149,  LA=0
+PID=150, Name=p150,  LA=0
+PID=151, Name=p151,  LA=0
+PID=152, Name=p152,  LA=0
+PID=153, Name=p153,  LA=0
+PID=154, Name=p154,  LA=0
+PID=155, Name=p155,  LA=0
+PID=156, Name=p156,  LA=0
+PID=157, Name=p157,  LA=0
+PID=158, Name=p158,  LA=0
+PID=159, Name=p159,  LA=0
+PID=160, Name=p160,  LA=0
+PID=161, Name=p161,  LA=0
+PID=162, Name=p162,  LA=0
+PID=163, Name=p163,  LA=0
+PID=164, Name=p164,  LA=0
+PID=165, Name=p165,  LA=0
+PID=166, Name=p166,  LA=0
+PID=167, Name=p167,  LA=0
+PID=168, Name=p168,  LA=0
+PID=169, Name=p169,  LA=0
+PID=170, Name=p170,  LA=0
+PID=171, Name=p171,  LA=0
+PID=172, Name=p172,  LA=0
+PID=173, Name=p173,  LA=0
+PID=174, Name=p174,  LA=0
+PID=175, Name=p175,  LA=0
+PID=176, Name=p176,  LA=0
+PID=177, Name=p177,  LA=0
+PID=178, Name=p178,  LA=0
+PID=179, Name=p179,  LA=0
+PID=180, Name=p180,  LA=0
+PID=181, Name=p181,  LA=0
+PID=182, Name=p182,  LA=0
+PID=183, Name=p183,  LA=0
+PID=184, Name=p184,  LA=0
+PID=185, Name=p185,  LA=0
+PID=186, Name=p186,  LA=0
+PID=187, Name=p187,  LA=0
+PID=188, Name=p188,  LA=0
+PID=189, Name=p189,  LA=0
+PID=190, Name=p190,  LA=0
+PID=191, Name=p191,  LA=0
+PID=192, Name=p192,  LA=0
+PID=193, Name=p193,  LA=0
+PID=194, Name=p194,  LA=0
+PID=195, Name=p195,  LA=0
+PID=196, Name=p196,  LA=0
+PID=197, Name=p197,  LA=0
+PID=198, Name=p198,  LA=0
+PID=199, Name=p199,  LA=0
+PID=200, Name=p200,  LA=0
+PID=201, Name=p201,  LA=0
+PID=202, Name=p202,  LA=0
+PID=203, Name=p203,  LA=0
+PID=204, Name=p204,  LA=0
+PID=205, Name=p205,  LA=0
+PID=206, Name=p206,  LA=0
+PID=207, Name=p207,  LA=0
+PID=208, Name=p208,  LA=0
+PID=209, Name=p209,  LA=0
+PID=210, Name=p210,  LA=0
+PID=211, Name=p211,  LA=0
+PID=212, Name=p212,  LA=0
+PID=213, Name=p213,  LA=0
+PID=214, Name=p214,  LA=0
+PID=215, Name=p215,  LA=0
+PID=216, Name=p216,  LA=0
+PID=217, Name=p217,  LA=0
+PID=218, Name=p218,  LA=0
+PID=219, Name=p219,  LA=0
+PID=220, Name=p220,  LA=0
+PID=221, Name=p221,  LA=0
+PID=222, Name=p222,  LA=0
+PID=223, Name=p223,  LA=0
+PID=224, Name=p224,  LA=0
+PID=225, Name=p225,  LA=0
+PID=226, Name=p226,  LA=0
+PID=227, Name=p227,  LA=0
+PID=228, Name=p228,  LA=0
+PID=229, Name=p229,  LA=0
+PID=230, Name=p230,  LA=0
+PID=231, Name=p231,  LA=0
+PID=232, Name=p232,  LA=0
+PID=233, Name=p233,  LA=0
+PID=234, Name=p234,  LA=0
+PID=235, Name=p235,  LA=0
+PID=236, Name=p236,  LA=0
+PID=237, Name=p237,  LA=0
+PID=238, Name=p238,  LA=0
+PID=239, Name=p239,  LA=0
+PID=240, Name=p240,  LA=0
+PID=241, Name=p241,  LA=0
+PID=242, Name=p242,  LA=0
+PID=243, Name=p243,  LA=0
+PID=244, Name=p244,  LA=0
+PID=245, Name=p245,  LA=0
+PID=246, Name=p246,  LA=0
+PID=247, Name=p247,  LA=0
+PID=248, Name=p248,  LA=0
+PID=249, Name=p249,  LA=0
+PID=250, Name=p250,  LA=0
+PID=251, Name=p251,  LA=0
+PID=252, Name=p252,  LA=0
+PID=253, Name=p253,  LA=0
+PID=254, Name=p254,  LA=0
+PID=255, Name=p255,  LA=0
+PID=256, Name=p256,  LA=0
+PID=257, Name=p257,  LA=0
+PID=258, Name=p258,  LA=0
+PID=259, Name=p259,  LA=0
+PID=260, Name=p260,  LA=0
+PID=261, Name=p261,  LA=0
+PID=262, Name=p262,  LA=0
+PID=263, Name=p263,  LA=0
+PID=264, Name=p264,  LA=0
+PID=265, Name=p265,  LA=0
+PID=266, Name=p266,  LA=0
+PID=267, Name=p267,  LA=0
+PID=268, Name=p268,  LA=0
+PID=269, Name=p269,  LA=0
+PID=270, Name=p270,  LA=0
+PID=271, Name=p271,  LA=0
+PID=272, Name=p272,  LA=0
+PID=273, Name=p273,  LA=0
+PID=274, Name=p274,  LA=0
+PID=275, Name=p275,  LA=0
+PID=276, Name=p276,  LA=0
+PID=277, Name=p277,  LA=0
+PID=278, Name=p278,  LA=0
+PID=279, Name=p279,  LA=0
+PID=280, Name=p280,  LA=0
+PID=281, Name=p281,  LA=0
+PID=282, Name=p282,  LA=0
+PID=283, Name=p283,  LA=0
+PID=284, Name=p284,  LA=0
+PID=285, Name=p285,  LA=0
+PID=286, Name=p286,  LA=0
+PID=287, Name=p287,  LA=0
+PID=288, Name=p288,  LA=0
+PID=289, Name=p289,  LA=0
+PID=290, Name=p290,  LA=0
+PID=291, Name=p291,  LA=0
+PID=292, Name=p292,  LA=0
+PID=293, Name=p293,  LA=0
+PID=294, Name=p294,  LA=0
+PID=295, Name=p295,  LA=0
+PID=296, Name=p296,  LA=0
+PID=297, Name=p297,  LA=0
+PID=298, Name=p298,  LA=0
+PID=299, Name=p299,  LA=0
+PID=300, Name=p300,  LA=0
+PID=301, Name=p301,  LA=0
+PID=302, Name=p302,  LA=0
+PID=303, Name=p303,  LA=0
+PID=304, Name=p304,  LA=0
+PID=305, Name=p305,  LA=0
+PID=306, Name=p306,  LA=0
+PID=307, Name=p307,  LA=0
+PID=308, Name=p308,  LA=0
+PID=309, Name=p309,  LA=0
+PID=310, Name=p310,  LA=0
+PID=311, Name=p311,  LA=0
+PID=312, Name=p312,  LA=0
+PID=313, Name=p313,  LA=0
+PID=314, Name=p314,  LA=0
+PID=315, Name=p315,  LA=0
+PID=316, Name=p316,  LA=0
+PID=317, Name=p317,  LA=0
+PID=318, Name=p318,  LA=0
+PID=319, Name=p319,  LA=0
+PID=320, Name=p320,  LA=0
+PID=321, Name=p321,  LA=0
+PID=322, Name=p322,  LA=0
+PID=323, Name=p323,  LA=0
+PID=324, Name=p324,  LA=0
+PID=325, Name=p325,  LA=0
+PID=326, Name=p326,  LA=0
+PID=327, Name=p327,  LA=0
+PID=328, Name=p328,  LA=0
+PID=329, Name=p329,  LA=0
+PID=330, Name=p330,  LA=0
+PID=331, Name=p331,  LA=0
+PID=332, Name=p332,  LA=0
+PID=333, Name=p333,  LA=0
+PID=334, Name=p334,  LA=0
+PID=335, Name=p335,  LA=0
+PID=336, Name=p336,  LA=0
+PID=337, Name=p337,  LA=0
+PID=338, Name=p338,  LA=0
+PID=339, Name=p339,  LA=0
+PID=340, Name=p340,  LA=0
+PID=341, Name=p341,  LA=0
+PID=342, Name=p342,  LA=0
+PID=343, Name=p343,  LA=0
+PID=344, Name=p344,  LA=0
+PID=345, Name=p345,  LA=0
+PID=346, Name=p346,  LA=0
+PID=347, Name=p347,  LA=0
+PID=348, Name=p348,  LA=0
+PID=349, Name=p349,  LA=0
+PID=350, Name=p350,  LA=0
+PID=351, Name=p351,  LA=0
+PID=352, Name=p352,  LA=0
+PID=353, Name=p353,  LA=0
+PID=354, Name=p354,  LA=0
+PID=355, Name=p355,  LA=0
+PID=356, Name=p356,  LA=0
+PID=357, Name=p357,  LA=0
+PID=358, Name=p358,  LA=0
+PID=359, Name=p359,  LA=0
+PID=360, Name=p360,  LA=0
+PID=361, Name=p361,  LA=0
+PID=2, Name=p02,  LA=50
+PID=3, Name=p03,  LA=51
+PID=4, Name=p04,  LA=52
+
+[CPU States]:
+p01	05-11-2025 20-48-29	PID=1	RR=4	LA=49	Core: 0	4 / 3857
+p05	05-11-2025 20-48-29	PID=5	RR=4	LA=152	Core: 1	3 / 3326
+p07	05-11-2025 20-48-29	PID=7	RR=4	LA=355	Core: 2	1 / 3778
+p06	05-11-2025 20-48-29	PID=6	RR=4	LA=154	Core: 3	3 / 3137
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:29:37 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:29:46 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:30:01 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 557906
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+
+===== Report at 2025-11-24 05:33:00 =====
+CPU utilization: 0%
+Cores used: 0
+Cores available: 4
+
+=== Scheduler Snapshot ===| ---
+Tick: 24295105
+Paused: false
+[Sleep Queue]
+ (empty)
+[Job Queue]
+Channel Snapshot: 2 messages
+p02	ID: 2	PR: 0	PC: 0	(NEW)	
+p03	ID: 3	PR: 0	PC: 0	(NEW)	
+[Ready Queue]
+  (empty)
+
+[CPU States]:
+  CPU 0: IDLE
+  CPU 1: IDLE
+  CPU 2: IDLE
+  CPU 3: IDLE
+[Finished Processes]:
+ (none)
+===========================
+
+============================================
+

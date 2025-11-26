@@ -103,3 +103,5 @@ Ready Queue implementation needs to satisfy both short term queue and medium ter
 - It needs to select among the element the one with "least priority"; it has the ability to choose "a victim". This suggests a data structure that has a property of queue but be able to use some algorithm to select a victim. The closest to this is a multi-set `https://www.geeksforgeeks.org/cpp/multiset-in-cpp-stl/`.
 
 - It needs to change the algorithm midway
+
+#

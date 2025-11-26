@@ -1,6 +1,6 @@
-#include "../include/screen.hpp"
-#include "../include/reporter.hpp"
-#include "../include/scheduler.hpp"
+#include "view/screen.hpp"
+#include "view/reporter.hpp"
+#include "kernel/scheduler.hpp"
 #include <sstream>
 
 ScreenManager::ScreenManager() = default;

@@ -14,6 +14,7 @@ static std::string trim(std::string s) {
 Config load_config(const std::string &path) {
 
   Config cfg{};
+  cfg.scheduler_tick_delay = 0;
   std::ifstream in(path);
 
   if (!in) {
@@ -32,7 +33,6 @@ Config load_config(const std::string &path) {
 
     else if (key == "scheduler") {
       std::string v=value; std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-      
       if (v == "rr")        cfg.scheduler = SchedulingPolicy::RR;
       else if (v == "fcfs") cfg.scheduler = SchedulingPolicy::FCFS;
       else cfg.scheduler = SchedulingPolicy::FCFS;
@@ -44,6 +44,11 @@ Config load_config(const std::string &path) {
     else if (key == "max-ins") cfg.max_ins = static_cast<uint32_t>(std::stoul(value));
     else if (key == "delay-per-exec") cfg.delay_per_exec = static_cast<uint32_t>(std::stoul(value));
     else if (key == "snapshot-cooldown") cfg.snapshot_cooldown = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "scheduler-tick-delay") cfg.scheduler_tick_delay = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "max-generated-processes") cfg.max_generated_processes = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "save-snapshot-file-rate") cfg.save_snapshot_file_rate = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "remove-finished") cfg.remove_finished = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "remove-finished-capacity") cfg.remove_finished_capacity = static_cast<uint32_t>(std::stoul(value));
   }
   return cfg;
 }

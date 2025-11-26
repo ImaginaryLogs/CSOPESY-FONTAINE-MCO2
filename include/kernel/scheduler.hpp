@@ -1,8 +1,15 @@
 #pragma once
+
 #include "config.hpp"
-#include "process.hpp"
-#include "finished_map.hpp"
-#include "cpu_worker.hpp"
+#include "../util.hpp"
+#include "../processes/process.hpp"
+#include "../data_structures/finished_map.hpp"
+#include "../data_structures/channel.hpp"
+#include "../data_structures/dynamic_victim_channel.hpp"
+#include "../data_structures/timer_entry.hpp"
+#include "../data_structures/buffered_channel.hpp"
+#include "kernel/cpu_worker.hpp"
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -11,7 +18,6 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include "util.hpp"
 #include <barrier>
 #include <queue>
 #include <functional>
@@ -51,13 +57,13 @@ public:
   void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
   
   // === Pre-Post Scheduling API ===
-  void sleep_process(std::shared_ptr<Process> p, uint64_t duration);
+  
 
 
   // === Diagnostics ===
   std::string snapshot(); // returns screen-ls string
   uint32_t current_tick() const;
-
+  CpuUtilization cpu_utilization() const;
   // === Singleton Accessor ===
   Scheduler(Scheduler &other) = delete;       // Should not be copied
   void operator=(const Scheduler &) = delete; // Should not be assigned
@@ -67,7 +73,8 @@ public:
   void pause();
   void resume();
   bool is_paused() const;
-  void tick_barrier_sync();
+  void start_barrier_sync(uint32_t n);
+  void tick_barrier_sync(std::string who, int barrier_index);
   void stop_barrier_sync();
 
   uint32_t get_cpu_count() const;
@@ -75,7 +82,8 @@ public:
   std::string get_sched_snapshots();
   void setSchedulingPolicy(SchedulingPolicy policy_);
   std::string get_sleep_queue_snapshot();
-
+  size_t get_total_active_processes();
+  void save_snapshot();
 
 private:
   // === Scheduler Internal Methods ===
@@ -87,8 +95,9 @@ private:
   void timer_check();
   void log_status();
   void pause_check();
-
+  void enqueue_ready(std::shared_ptr<Process> p);
   // === Internal Scheduler State === 
+
   Config cfg_;
   std::thread sched_thread_;
   std::atomic<uint32_t> tick_{0};
@@ -97,8 +106,11 @@ private:
   std::atomic<bool> sched_running_{false};
   std::mutex short_term_mtx_;
   std::mutex scheduler_mtx_;
-  std::unique_ptr<std::barrier<>> tick_sync_barrier_;
-  Channel<std::string> log_queue;
+  std::mutex debug_mtx_;
+  
+  std::unique_ptr<std::barrier<>> startup_barrier_;
+  std::unique_ptr<std::barrier<BarrierPrint>> tick_sync_barrier_;
+  BufferedChannel<std::string> log_queue;
   std::string cpu_state_snapshot();
   
   // === Queues ===
@@ -106,20 +118,20 @@ private:
   DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
   Channel<std::shared_ptr<Process>> blocked_queue_;                                       // sleeping or page-faulted, medium-term scheduler
   Channel<std::shared_ptr<Process>> swapped_queue_;                                       // swapped to backing store, medium-term scheduler
-  std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<>> sleep_queue_;  // sleep process, timer
+  TimerEntrySleepQueue sleep_queue_;                                                      // sleep process, timer
 
   // === CPU State ===
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
   std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
-  FinishedMap finished_;      // finished processes, indexed by cpu id
+  FinishedMap finished_queue_;      // finished processes, indexed by cpu id
   
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
   std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
-
-  // === Scheduler State ===
+  std::atomic<uint32_t> total_active_processes;
 
   // === Utilities ===
   void initialize_vectors();
   void cleanup_finished_processes(uint32_t cpu_id);
+  
 };

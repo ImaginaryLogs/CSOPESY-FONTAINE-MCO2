@@ -1,7 +1,7 @@
 #pragma once
 #include "config.hpp"
-#include "instruction.hpp"
-#include "scheduler.hpp"
+#include "processes/instruction.hpp"
+#include "kernel/scheduler.hpp"
 #include <atomic>
 #include <thread>
 #include <vector>

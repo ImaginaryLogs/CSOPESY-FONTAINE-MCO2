@@ -145,7 +145,7 @@ void test_sleep(){
 // --- Create simple processes ---
   std::vector<Instruction> instr1 = {
       {InstructionType::PRINT, {"P1-1"}},
-      {InstructionType::PRINT, {"P1-2"}},
+      {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
   std::vector<Instruction> instr2 = { 
       {InstructionType::PRINT, {"P2-1"}},
@@ -153,7 +153,7 @@ void test_sleep(){
       {InstructionType::PRINT, {"P2-3"}}};
   std::vector<Instruction> instr3 = { 
       {InstructionType::PRINT, {"P2-1"}},
-      {InstructionType::PRINT, {"P2-2"}},
+      {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
 
   auto p1 = std::make_shared<Process>(1, "P1", instr1);
@@ -166,7 +166,7 @@ void test_sleep(){
   cfg.scheduler_tick_delay = 0; // fast ticks
   cfg.quantum_cycles = 1;
   cfg.snapshot_cooldown = 1;
-  cfg.scheduler = SchedulingPolicy::RR;
+  cfg.scheduler = SchedulingPolicy::FCFS;
   Scheduler sched(cfg);
 
   // Set policy: For simplicity assume scheduler has a field or flag
@@ -177,7 +177,7 @@ void test_sleep(){
   sched.submit_process(p1);
   sched.submit_process(p2); 
   sched.submit_process(p3);
-  sched.setSchedulingPolicy(SchedulingPolicy::RR);
+  sched.setSchedulingPolicy(SchedulingPolicy::FCFS);
 
   std::cout << "Starting scheduler.\n"
             << sched.snapshot() << "\n";
@@ -212,7 +212,7 @@ void test_sleep(){
   }
   // --- Verify RR ---
   std::cout << "Verifying RR execution order.\n";
-
+//
   // Interleaved logs (RR quantum = 1 tick per execute_tick)
   // Each process should have at least one instruction executed
   assert(logs_p1.size() >= 1);

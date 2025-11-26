@@ -1,13 +1,13 @@
-#include "../include/process_generator.hpp"
-#include "../include/instruction.hpp"
-#include "../include/process.hpp"
+#include "processes/process_generator.hpp"
+#include "processes/instruction.hpp"
+#include "processes/process.hpp"
 #include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <random>
 #include <sstream>
 #include <thread>
-#include <iomanip>
 
 // Enable debug logging for the generator by uncommenting:
 // #define DEBUG_GENERATOR
@@ -321,6 +321,16 @@ void ProcessGenerator::start() {
   if (running_.load())
     return;
   running_.store(true);
+  // Seed one process immediately so users see activity right after `scheduler-start`
+  try {
+    uint32_t est_size_immediate = 0;
+    uint32_t initial_top = rand_range(cfg_.min_ins, cfg_.max_ins);
+    auto ins0 = generate_instructions(initial_top, est_size_immediate);
+    uint32_t id0 = next_id_.fetch_add(1);
+    std::ostringstream name0; name0 << "p" << std::setw(2) << std::setfill('0') << id0;
+    auto p0 = std::make_shared<Process>(id0, name0.str(), ins0);
+    sched_.submit_process(p0);
+  } catch (...) { /* best effort seed; ignore errors */ }
 #ifdef DEBUG_GENERATOR
   std::clog << "generator: starting" << std::endl;
 #endif
@@ -351,75 +361,45 @@ void ProcessGenerator::stop() {
 /**
  * Main generator thread loop
  *
- * This is the core process generation routine that runs in a background thread.
- * It periodically:
- * 1. Sleeps for batch_process_freq seconds
- * 2. Generates a random set of instructions within budget
- * 3. Creates a new Process with those instructions
- * 4. Submits the Process to the scheduler
+ * Revised:
+ * - batch_process_freq is measured in CPU cycles (scheduler ticks), not
+ * milliseconds.
+ * - This loop now synchronizes process generation with the scheduler’s tick
+ * counter.
+ *
+ * Behavior:
+ *   Every `batch_process_freq` scheduler ticks, this thread generates one new
+ * process. Each process is constructed with a random number of instructions
+ * (within [min_ins, max_ins]), constrained by the configured
+ * max_unrolled_instructions budget.
  *
  * Thread Safety:
- * - Runs in dedicated background thread
- * - Uses atomic flag for shutdown coordination
- * - Uses atomic counter for process ID generation
- *
- * Note: This is an internal method called by start(). Do not call directly.
+ * - Runs in a dedicated background thread.
+ * - Polls the scheduler’s current tick safely (no blocking interaction).
+ * - Uses atomic flag `running_` for coordinated shutdown.
  */
 void ProcessGenerator::loop() {
-  using namespace std::chrono_literals;
+  uint32_t last_generated_tick = 0;
+
   while (running_.load()) {
-    // sleep between process generations
-    std::this_thread::sleep_for(std::chrono::milliseconds(
-        cfg_.batch_process_freq * cfg_.scheduler_tick_delay));
+    uint32_t current_tick = sched_.current_tick();
+    if (sched_.get_total_active_processes() <=cfg_.max_generated_processes && current_tick - last_generated_tick >= cfg_.batch_process_freq) {
+      // generate one process
+      uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
+      uint32_t estimated_size = 0;
+      auto ins = generate_instructions(num_instructions, estimated_size);
 
-    // Generate process instructions while respecting configured budget
-    uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
-    uint32_t estimated_size = 0;
-    std::vector<Instruction> ins;
-    ins.reserve(num_instructions);
-    for (uint32_t i = 0; i < num_instructions; ++i) {
-      Instruction instr = random_instruction(0);
-      uint32_t instr_size = estimate_unrolled_size_for_instr(instr);
-#ifdef DEBUG_GENERATOR
-      {
-        std::ostringstream dbg;
-        dbg << "generator: candidate " << instr_to_string(instr)
-            << " -> estimated_size=" << instr_size;
-        std::clog << dbg.str() << std::endl;
-      }
-#endif
-      if (cfg_.max_unrolled_instructions > 0 &&
-          estimated_size + instr_size > cfg_.max_unrolled_instructions) {
-        // exceeding budget: stop adding more top-level instructions
-#ifdef DEBUG_GENERATOR
-        std::ostringstream dbg;
-        dbg << "generator: budget exceeded (estimated " << estimated_size
-            << ", instr would add " << instr_size << ") - stopping";
-        std::clog << dbg.str() << std::endl;
-#endif
-        break;
-      }
-      estimated_size += instr_size;
-      ins.push_back(std::move(instr));
+      uint32_t id = next_id_.fetch_add(1);
+      std::ostringstream name;
+      name << "p" << std::setw(2) << std::setfill('0') << id;
+      auto process = std::make_shared<Process>(id, name.str(), ins);
+
+      sched_.submit_process(process);
+      last_generated_tick = current_tick;
     }
 
-    // Assign id first (post-increment) and use the same id for the name to
-    // avoid off-by-one mismatch between id and name.
-    uint32_t id = next_id_.fetch_add(1);
-    std::ostringstream name;
-    name << "p" << std::setw(2) << std::setfill('0') << id;
-    auto process = std::make_shared<Process>(id, name.str(), ins);
-
-#ifdef DEBUG_GENERATOR
-    {
-      std::ostringstream dbg;
-      dbg << "generator: created process id=" << id
-          << " top_level=" << ins.size()
-          << " estimated_unrolled=" << estimated_size;
-      std::clog << dbg.str() << std::endl;
-    }
-#endif
-
-    sched_.submit_process(process);
+    // sleep just a bit to avoid busy-waiting
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(cfg_.scheduler_tick_delay * 4 + 10));
   }
 }

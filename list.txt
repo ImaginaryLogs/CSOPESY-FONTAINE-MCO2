@@ -1,0 +1,87 @@
+.
+├── assets
+│   └── readme
+│       ├── furina-2.jpg
+│       ├── furina-3.jpg
+│       ├── furina-4.jpg
+│       └── furina.jpg
+├── bin
+├── build
+│   ├── channels.o
+│   ├── cli.o
+│   ├── config.o
+│   ├── cpu_worker.o
+│   ├── finished_map.o
+│   ├── main.o
+│   ├── process_generator.o
+│   ├── process.o
+│   ├── reporter.o
+│   ├── scheduler_extras.o
+│   ├── scheduler.o
+│   ├── scheduler_utils.o
+│   └── screen.o
+├── config.txt
+├── csopesy.exe
+├── csopesy-log.txt
+├── docs
+│   ├── plansv2.md
+│   ├── scheduler.md
+│   ├── specs1.pdf
+│   └── specs2.pdf
+├── include
+│   ├── config.hpp
+│   ├── data_structures
+│   │   ├── buffered_channel.hpp
+│   │   ├── channel.hpp
+│   │   ├── dynamic_victim_channel.hpp
+│   │   ├── finished_map.hpp
+│   │   └── timer_entry.hpp
+│   ├── kernel
+│   │   ├── cpu_worker.hpp
+│   │   └── scheduler.hpp
+│   ├── processes
+│   │   ├── instruction.hpp
+│   │   ├── process_generator.hpp
+│   │   └── process.hpp
+│   ├── util.hpp
+│   └── view
+│       ├── cli.hpp
+│       ├── reporter.hpp
+│       └── screen.hpp
+├── list.txt
+├── Makefile
+├── README.md
+├── src
+│   ├── config.cpp
+│   ├── data_structures
+│   │   ├── buffered_channel.cpp
+│   │   ├── channel.cpp
+│   │   ├── channel.hpp
+│   │   ├── dynamic_victim_channel.cpp
+│   │   ├── finished_map.cpp
+│   │   ├── finished_processes.cpp
+│   │   └── timer_entry.cpp
+│   ├── kernel
+│   │   ├── cpu_worker.cpp
+│   │   ├── scheduler.cpp
+│   │   ├── scheduler_extras.cpp
+│   │   └── scheduler_utils.cpp
+│   ├── main.cpp
+│   ├── processes
+│   │   ├── process.cpp
+│   │   └── process_generator.cpp
+│   └── view
+│       ├── cli.cpp
+│       ├── reporter.cpp
+│       └── screen.cpp
+├── tests
+│   ├── test_multicpu.cpp
+│   ├── test_process.cpp
+│   ├── test_process_generator.cpp
+│   └── test_scheduler.cpp
+└── .vscode
+    ├── c_cpp_properties.json
+    ├── launch.json
+    └── settings.json
+
+288 directories, 912 files

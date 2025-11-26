@@ -1,5 +1,5 @@
 #pragma once
-#include "process.hpp"
+#include "processes/process.hpp"
 #include <memory>
 #include <mutex>
 #include <unordered_map>

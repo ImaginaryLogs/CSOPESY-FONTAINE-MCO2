@@ -1,10 +1,12 @@
-#include "../include/cli.hpp"
-#include "../include/process.hpp"
+#include "view/cli.hpp"
+#include "processes/process.hpp"
+#include "kernel/scheduler.hpp"
 #include <iostream>
 #include <sstream>
 #include <vector>
 #include <cctype>
 #include <algorithm>
+#include <memory>   // <-- needed for std::shared_ptr
 
 // util funcs
 
@@ -65,6 +67,10 @@ void CLI::initialize_system() {
   if (scheduler_) { scheduler_->stop(); delete scheduler_; }
   scheduler_ = new Scheduler(cfg_);
   scheduler_->start();
+
+  // One-time CPU idle snapshot after scheduler starts
+  for (uint32_t i = 0; i < cfg_.num_cpu; ++i)
+    std::cout << "  CPU ID: " << i << " IDLE\n";
 
   if (generator_) delete generator_;
   generator_ = new ProcessGenerator(cfg_, *scheduler_);
@@ -149,13 +155,42 @@ int CLI::run() {
 
     if (cmd == "exit") {
       std::cout << "Goodbye.\n";
+      scheduler_->resume();
+      
       break;
     }
     else if (cmd == "initialize") {
       initialize_system();
     }
     else if (cmd == "scheduler-start") {
-      if (require_init()) generator_->start();
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n"; scheduler_->resume(); }
+    }
+    else if (cmd == "pause") {
+      if (require_init()) { scheduler_->pause(); std::cout << "Paused.\n"; }
+    }
+    else if (cmd == "resume") {
+      if (require_init()) { scheduler_->resume(); std::cout << "Resumed.\n"; }
+    }
+    else if (cmd == "policy") {
+      if (require_init()) {
+        if (args.size() < 2) { std::cout << "Usage: policy <rr|fcfs|priority>\n"; }
+        else {
+          std::string v = to_lower(args[1]);
+          if (v == "rr") scheduler_->setSchedulingPolicy(SchedulingPolicy::RR);
+          else if (v == "fcfs") scheduler_->setSchedulingPolicy(SchedulingPolicy::FCFS);
+          else if (v == "priority") scheduler_->setSchedulingPolicy(SchedulingPolicy::PRIORITY);
+          else { std::cout << "Unknown policy. Use rr|fcfs|priority\n"; }
+        }
+      }
+    }
+    else if (cmd == "util") {
+      if (require_init()) {
+        CpuUtilization util = scheduler_->cpu_utilization();
+
+        std::cout << "CPU utilization: " << static_cast<int>(util.percent) << "%\n"
+                  << "Cores used: " << util.used << "\n"
+                  << "Cores available: " << util.total << "\n";
+      }
     }
     else if (cmd == "scheduler-stop") {
       if (require_init()) generator_->stop();
@@ -168,6 +203,13 @@ int CLI::run() {
         std::cout << reporter_->build_report();
         reporter_->write_log("csopesy-log.txt");
       }
+    }
+    else if (cmd == "help") {
+      std::cout << "initialize: initializes the system with config.\n" 
+                << "scheduler-start: starts the scheduler"
+                << "util: gets cpu utilization"
+                << "report-util: writes the report, saves to file."
+                << "scheduler-stop: stops the scheduler";
     }
     else {
       std::cout << "Unknown command: " << line << "\n";
