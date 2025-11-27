@@ -71,3 +71,20 @@ New parameters to be supported:
 - **Allocation**: Fixed partition or simple paging. We will use Paging as required.
 - **Address Space**: Flat virtual address space per process, starting at 0.
 - **Variable Storage**: Variables are 2 bytes (uint16). `DECLARE` allocates 2 bytes.
+
+## Missing Features Implementation (Planned)
+### 1. New Instructions
+- `WRITE <address> <var>`: Writes value of variable to specific memory address.
+- `READ <var> <address>`: Reads value from specific memory address to variable.
+
+### 2. Memory Access Violation
+- **Detection**: If `v_addr >= memory_size` or `v_addr` is not allocated (beyond `current_brk` and not explicitly accessed via valid range).
+- **Action**:
+    - Terminate process immediately.
+    - Log error: "Process <name> shut down due to memory access violation error...".
+    - Remove from Scheduler queues.
+
+### 3. CLI Updates
+- `screen -c <name> <mem_size> "<instructions>"`:
+    - Parses `mem_size` to set process memory limit.
+    - Parses semicolon-separated instructions.
