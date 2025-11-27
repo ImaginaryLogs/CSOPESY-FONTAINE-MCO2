@@ -211,41 +211,6 @@ std::shared_ptr<Process> Scheduler::get_process(uint32_t pid) {
     return nullptr;
 }
 
-void Scheduler::long_term_admission() {
-    // 1. Check job queue
-    while (!job_queue_.isEmpty()) {
-        auto p = job_queue_.receive();
-        if (!p) continue;
-
-        // Initialize memory
-        // Calculate memory limit based on config
-        // "M is the rolled value between min-mem-per-proc and max-mem-proc"
-        // For simplicity, let's just pick max or random?
-        // Specs: "M is the rolled value". Implies random.
-        // Let's use max for now or simple rand.
-        // We need <random> or just use rand().
-        // Let's use min + (rand % (max - min)).
-        size_t mem_size = cfg_.min_mem_per_proc;
-        if (cfg_.max_mem_per_proc > cfg_.min_mem_per_proc) {
-             mem_size += (rand() % (cfg_.max_mem_per_proc - cfg_.min_mem_per_proc));
-        }
-        // Align to frame size
-        if (mem_size % cfg_.mem_per_frame != 0) {
-            mem_size = ((mem_size / cfg_.mem_per_frame) + 1) * cfg_.mem_per_frame;
-        }
-
-        p->initialize_memory(mem_size, cfg_.mem_per_frame);
-
-        // Add to process map
-        process_map_[p->id()] = p;
-
-        DEBUG_PRINT(DEBUG_SCHEDULER, "Admitting process %d with %zu bytes memory", p->id(), mem_size);
-
-        p->set_state(ProcessState::READY);
-        ready_queue_.send(p);
-    }
-}
-
 void Scheduler::handle_page_fault(std::shared_ptr<Process> p, uint64_t fault_addr) {
     // fault_addr is actually page number in our simplified flow?
     // Process::execute_tick returns BLOCKED_PAGE_FAULT and puts page_num in args[0].
