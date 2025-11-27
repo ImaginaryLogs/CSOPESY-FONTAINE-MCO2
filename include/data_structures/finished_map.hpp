@@ -21,4 +21,5 @@ class FinishedMap {
   private:
     std::multimap<time_t, std::shared_ptr<OrderedFinishedEntry>, std::greater<>> finished_by_time_;
     std::mutex mutex_;
+    uint64_t completed;
 };

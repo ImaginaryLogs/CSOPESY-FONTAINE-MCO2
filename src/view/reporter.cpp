@@ -43,7 +43,7 @@ std::string Reporter::build_report() {
   oss << "CPU utilization: " << percent << "%\n"
       << "Cores used: " << used << "\n"
       << "Cores available: " << available << "\n\n"
-      << sched_.snapshot() << "\n";
+      << sched_.snapshot_with_log() << "\n";
   return oss.str();
 }
 
