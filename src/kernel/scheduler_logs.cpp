@@ -13,7 +13,7 @@
 std::string Scheduler::snapshot() {
   std::ostringstream oss;
   std::ostringstream oss_mini;
-  oss << "─ CPU Snapshot ──────────────────────────────────────────────────────────────────────────────\n";
+  oss << "- CPU Snapshot ------------------------------------------------------------------------------\n";
   oss << "Paused: " << (paused_.load() ? "true" : "false")
       << " Tick: " << tick_.load()
       << " Algorithm: " << (cfg_.scheduler == SchedulingPolicy::FCFS ? "FCFS" : "RR") << "\n";
@@ -21,7 +21,7 @@ std::string Scheduler::snapshot() {
   oss << "[CPU States]:\n";
   oss << cpu_state_snapshot();
   oss << "\n";  
-  oss << "──────────────────────────────────────────────┬──────────────────────────────────────────────\n";
+  oss << "----------------------------------------------t----------------------------------------------\n";
   oss_mini << "[Sleep Queue]\n"
       << (((sleep_queue_.isEmpty()))
         ? " (empty)\n\n"
@@ -54,11 +54,11 @@ std::string Scheduler::snapshot() {
   std::string finished_string = oss_mini.str();
   oss_mini.str("");
   
-  oss << merge_columns(sleep_string, job_string, (size_t)45, " │ ");
-  oss << "\n──────────────────────────────────────────────┼──────────────────────────────────────────────\n";
-  oss << merge_columns(ready_string, finished_string, (size_t)45, " │ ");
+  oss << merge_columns(sleep_string, job_string, (size_t)45, " | ");
+  oss << "\n----------------------------------------------+----------------------------------------------\n";
+  oss << merge_columns(ready_string, finished_string, (size_t)45, " | ");
 
-  oss << "\n──────────────────────────────────────────────┴──────────────────────────────────────────────\n";
+  oss << "\n----------------------------------------------^----------------------------------------------\n";
 
   return oss.str();
 }
