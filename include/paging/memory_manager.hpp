@@ -23,8 +23,6 @@
 #include <memory>
 #include "../../include/config.hpp"
 
-template <size_t PageSize, size_t PhysPages>
-
 class MemoryManager {
 public:
     static MemoryManager& getInstance();

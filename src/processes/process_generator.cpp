@@ -35,6 +35,10 @@ static std::string inst_type_to_string(InstructionType t) {
     return "SLEEP";
   case InstructionType::FOR:
     return "FOR";
+  case InstructionType::READ:
+    return "READ";
+  case InstructionType::WRITE:
+    return "WRITE";
   default:
     return "UNKNOWN";
   }

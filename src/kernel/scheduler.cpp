@@ -1,4 +1,5 @@
 #include "kernel/scheduler.hpp"
+#include "paging/memory_manager.hpp"
 #include "processes/process.hpp"
 #include "kernel/cpu_worker.hpp"
 #include "data_structures/finished_map.hpp"
@@ -184,6 +185,20 @@ void Scheduler::tick_loop()
 
 
 
+void Scheduler::enqueue_ready(std::shared_ptr<Process> p) {
+    if (!p) return;
+
+    // Acquire short-term lock to inspect running_ and queue safely
+    std::lock_guard<std::mutex> lock(short_term_mtx_);
+
+    // Don't enqueue finished or waiting processes
+    if (p->is_finished() || p->is_waiting()) return;
+
+    // If it's already running on any core, don't enqueue
+    for (const auto &r : running_) {
+        if (r && r == p) return;
+    }
+
     // If your ready_queue supports dedup check, you can also ask it here.
     p->set_state(ProcessState::READY);
     ready_queue_.send(p);
@@ -277,4 +292,12 @@ void Scheduler::cleanup_finished_processes(uint32_t cpu_id) {
     // I should check if it's already defined.
     // `scheduler.cpp` view ended at line 204 with `enqueue_ready`.
     // So I can append these methods.
+}
+
+std::vector<std::shared_ptr<Process>> Scheduler::get_all_processes() const {
+    std::vector<std::shared_ptr<Process>> processes;
+    for (const auto& pair : process_map_) {
+        processes.push_back(pair.second);
+    }
+    return processes;
 }

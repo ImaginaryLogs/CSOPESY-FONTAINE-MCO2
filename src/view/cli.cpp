@@ -138,6 +138,121 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
     return;
   }
 
+  if (args.size() >= 4 && args[1] == "-c") {
+      // screen -c <process_name> <mem_size> "<instructions>"
+      // Note: args will be split by spaces, so instructions might be spread across args.
+      // We need to reconstruct the instruction string or parse carefully.
+      // But wait, split() splits by whitespace.
+      // If the user types: screen -c p1 128 "INS1; INS2"
+      // args[0]=screen, args[1]=-c, args[2]=p1, args[3]=128, args[4]="INS1;, args[5]=INS2"
+      // We need to handle quoted string reconstruction? Or just join the rest.
+
+      const std::string name = args[2];
+      uint32_t mem_size = 0;
+      try {
+          mem_size = std::stoul(args[3]);
+      } catch (...) {
+          std::cout << "Invalid memory size.\n";
+          return;
+      }
+
+      // Reconstruct instructions from args[4:]
+      std::string instruction_str;
+      for (size_t i = 4; i < args.size(); ++i) {
+          if (i > 4) instruction_str += " ";
+          instruction_str += args[i];
+      }
+
+      // Remove quotes if present
+      if (instruction_str.size() >= 2 && instruction_str.front() == '"' && instruction_str.back() == '"') {
+          instruction_str = instruction_str.substr(1, instruction_str.size() - 2);
+      }
+
+      // Parse instructions
+      std::vector<Instruction> ins;
+      std::stringstream ss(instruction_str);
+      std::string segment;
+      while (std::getline(ss, segment, ';')) {
+          // Trim whitespace
+          segment.erase(0, segment.find_first_not_of(" \t\n\r"));
+          segment.erase(segment.find_last_not_of(" \t\n\r") + 1);
+          if (segment.empty()) continue;
+
+          // Parse segment: TYPE arg1 arg2 ...
+          // Or TYPE(arg1, arg2) ?
+          // Specs say: "DECLARE varA 10; ADD varA varA varB; PRINT(\"Result: \" + varC)"
+          // It seems mixed format?
+          // "DECLARE varA 10" -> Space separated
+          // "PRINT(\"Result: \" + varC)" -> Function style?
+          // Let's assume space separated for simplicity first as per previous examples,
+          // but the sample usage shows "PRINT(\"Result: \" + varC)".
+          // Our current Instruction structure supports args vector.
+          // Let's try to parse space separated first, handling quotes?
+          // Actually, let's just split by space for now, treating quoted parts as one arg if possible?
+          // Or just simple split.
+          // For "PRINT(\"Result: \" + varC)", it's complex.
+          // Let's support the simple space-separated format for DECLARE, ADD, etc.
+          // And maybe special handling for PRINT if it starts with PRINT(?
+
+          std::stringstream seg_ss(segment);
+          std::string type_str;
+          seg_ss >> type_str;
+
+          Instruction instr;
+          if (type_str == "DECLARE") instr.type = InstructionType::DECLARE;
+          else if (type_str == "PRINT") instr.type = InstructionType::PRINT;
+          else if (type_str == "ADD") instr.type = InstructionType::ADD;
+          else if (type_str == "SUBTRACT") instr.type = InstructionType::SUBTRACT; // Assuming SUBTRACT/SUB
+          else if (type_str == "SLEEP") instr.type = InstructionType::SLEEP;
+          else if (type_str == "WRITE") instr.type = InstructionType::WRITE;
+          else if (type_str == "READ") instr.type = InstructionType::READ;
+          else {
+              std::cout << "Unknown instruction type: " << type_str << "\n";
+              continue;
+          }
+
+          // Parse args
+          // If PRINT and next char is (, handle differently?
+          // For now, simple space split.
+          std::string arg;
+          while (seg_ss >> arg) {
+              // Remove potential trailing ) or starting ( for PRINT(msg) style if we want to support it loosely
+              // But specs say: "PRINT(\"Result: \" + varC)"
+              // This is quite complex to parse fully correctly without a proper lexer.
+              // Let's strip ( and ) and " for simple cases.
+              instr.args.push_back(arg);
+          }
+          ins.push_back(instr);
+      }
+
+      static uint32_t user_pid = 200000;
+      const uint32_t pid = user_pid++;
+
+      auto p = std::make_shared<Process>(pid, name, ins);
+      // Set memory limit? Process class doesn't strictly enforce limit at creation,
+      // but Scheduler initializes it.
+      // Wait, Scheduler::long_term_admission initializes memory based on config.
+      // But here we want custom memory size.
+      // We might need to set a hint or force it.
+      // Process::initialize_memory is called by Scheduler.
+      // Maybe we can set a property on Process?
+      // Or we can initialize it right now if we bypass long_term_admission?
+      // But we submit to scheduler.
+      // Let's add a `required_memory` field to Process or Config override?
+      // For now, let's assume Scheduler respects it if we set it?
+      // Actually, Scheduler overwrites it in `long_term_admission`.
+      // We should probably modify Scheduler to respect pre-set memory size?
+      // Or add `Process::set_memory_requirement(size_t)`.
+      // Let's assume we can set it and Scheduler checks if already set?
+      // Scheduler calls `p->initialize_memory`.
+      // We can add `p->set_initial_memory_size(mem_size)`.
+
+      // For now, let's just submit.
+      scheduler_->submit_process(p);
+      std::cout << "Process " << name << " created with " << ins.size() << " instructions.\n";
+      return;
+  }
+
   std::cout << "Unknown screen subcommand.\n";
 }
 

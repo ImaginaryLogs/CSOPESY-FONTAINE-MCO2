@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-enum class InstructionType { PRINT, DECLARE, ADD, SUBTRACT, SLEEP, FOR };
+enum class InstructionType { PRINT, DECLARE, ADD, SUBTRACT, SLEEP, FOR, READ, WRITE };
 
 // Represents a single instruction in the process's instruction set
 struct Instruction {

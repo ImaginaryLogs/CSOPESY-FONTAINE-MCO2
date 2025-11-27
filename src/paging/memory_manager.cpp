@@ -193,7 +193,7 @@ std::unordered_map<size_t, MemoryManager::FrameInfo> MemoryManager::get_ram_stat
     std::unordered_map<size_t, FrameInfo> state;
     for (size_t i = 0; i < frame_map_.size(); ++i) {
         if (frame_map_[i]) {
-            state[i] = {frame_owners_[i].pid, frame_owners_[i].page_num, static_cast<bool>(dirty_map_[i]), true};
+            state[i] = {frame_owners_[i].pid, frame_owners_[i].page_num, static_cast<bool>(dirty_map_[i])};
         }
     }
     return state;

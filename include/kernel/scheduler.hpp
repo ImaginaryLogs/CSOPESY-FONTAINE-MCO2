@@ -85,6 +85,8 @@ public:
   size_t get_total_active_processes();
   void save_snapshot();
   const Config& get_config() const { return cfg_; }
+  std::shared_ptr<Process> get_process(uint32_t pid);
+  std::vector<std::shared_ptr<Process>> get_all_processes() const;
 
 private:
   // === Scheduler Internal Methods ===
@@ -134,8 +136,7 @@ private:
   // === Utilities ===
   void initialize_vectors();
   void cleanup_finished_processes(uint32_t cpu_id);
-  std::shared_ptr<Process> get_process(uint32_t pid);
-  std::vector<std::shared_ptr<Process>> get_all_processes() const;
+
 
   std::unordered_map<uint32_t, std::shared_ptr<Process>> process_map_;
 };

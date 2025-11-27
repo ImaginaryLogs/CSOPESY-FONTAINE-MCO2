@@ -1,10 +1,12 @@
 #include "processes/process.hpp"
 #include "processes/instruction.hpp"
+#include "paging/memory_manager.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -332,7 +334,7 @@ std::string Process::smi_summary() {
   if (m_state == ProcessState::FINISHED) {
     oss << "Finished!\n";
   }
-  return oss.str();
+    return oss.str();
 }
 
 /**
@@ -346,7 +348,7 @@ std::string Process::smi_summary() {
  * @return Parsed and clamped value
  */
 static uint16_t
-read_token_value(const std::string &token,
+read_token_value_old(const std::string &token,
                  std::unordered_map<std::string, uint16_t> &vars) {
   if (is_number(token)) {
     try {
@@ -487,12 +489,18 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
           m_state = ProcessState::BLOCKED_PAGE_FAULT;
           return {ProcessState::BLOCKED_PAGE_FAULT, {}};
       }
+#ifdef DEBUG_PROCESS
+      std::ostringstream dbg;
+      dbg << m_name << ": DECLARE " << inst.args[0] << " = 0";
+      m_logs.push_back(dbg.str());
+#endif
     }
     ++pc;
     break;
   }
 
   case InstructionType::ADD: {
+    // ADD(var1, var2/value, var3/value) -> var1 = var2 + var3
     if (inst.args.size() >= 3) {
       auto a_opt = read_token_value(inst.args[1]);
       if (!a_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
@@ -547,7 +555,7 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   case InstructionType::SLEEP: {
-    // SLEEP logic (unchanged)
+    // SLEEP(X) -> relinquish CPU for X ticks (WAITING)
     uint32_t ticks = 0;
     if (!inst.args.empty() && is_number(inst.args[0])) {
       try {
@@ -557,17 +565,25 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
       }
     }
     if (ticks == 0) {
-      ++pc;
+      ++pc; // zero sleep: just continue
     } else {
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
-      ++pc;
+      ++pc; // advance PC so when sleep ends we resume after SLEEP
+
+
+      // Increment executed-instruction count (skip FOR)
       if (inst.type != InstructionType::FOR) {
         ++m_metrics.executed_instructions;
       }
+
+      // Set busy-wait delay if configured
       if (delays_per_exec > 0 && pc <= m_instr.size()) {
+        // Only set delay if more instructions remain
         m_delay_remaining = delays_per_exec;
       }
+
+      // If pc reached end after increment
       if (pc >= m_instr.size()) {
         m_state = ProcessState::FINISHED;
         m_metrics.finished_tick = global_tick;
@@ -580,15 +596,110 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   case InstructionType::FOR: {
+    // FOR should have been unrolled in constructor. If encountered, skip
+    // safely.
     ++pc;
     break;
+  }
+
+  case InstructionType::READ: {
+      // READ <var> <address>
+      if (inst.args.size() >= 2) {
+          uint32_t addr = 0;
+          try {
+              addr = std::stoul(inst.args[1], nullptr, 0); // Handle hex/dec
+          } catch (...) {
+              // Invalid address format -> treat as 0 or error?
+              // For now, let's assume valid format or 0.
+              addr = 0;
+          }
+
+          // Memory Violation Check
+          // We need to check if addr is within valid range?
+          // The specs say: "Memory spaces are bound within your running program’s memory address."
+          // But we don't have a strict "segment size" per process other than page table size.
+          // However, we can check if it maps to a valid page index.
+          // Or if it's arbitrarily large.
+          // Let's assume max virtual memory is 2^16 (65536) as per specs "All memory ranges are [2^6, 2^16]".
+          if (addr >= 65536) {
+              // Memory Violation
+              m_state = ProcessState::FINISHED; // Terminate
+              std::ostringstream err;
+              err << "Process " << m_name << " shut down due to memory access violation error that occurred at "
+                  << std::put_time(std::localtime(&m_metrics.start_time), "%H:%M:%S") // Approximate time
+                  << ". " << "0x" << std::hex << addr << " invalid.";
+              m_logs.push_back(err.str());
+              std::cout << err.str() << "\n"; // Print to console as per specs
+              return {ProcessState::FINISHED, {}};
+          }
+
+          auto phys = translate(addr);
+          if (!phys) {
+              set_faulting_page(addr / m_page_size);
+              m_state = ProcessState::BLOCKED_PAGE_FAULT;
+              return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+          }
+
+          // read_physical already reads 2 bytes (uint16_t)
+          uint16_t val = MemoryManager::getInstance().read_physical(phys->first, phys->second);
+
+          if (!set_var_value(inst.args[0], val)) {
+               m_state = ProcessState::BLOCKED_PAGE_FAULT;
+               return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+          }
+      }
+      ++pc;
+      break;
+  }
+
+  case InstructionType::WRITE: {
+      // WRITE <address> <var>
+      if (inst.args.size() >= 2) {
+          uint32_t addr = 0;
+          try {
+              addr = std::stoul(inst.args[0], nullptr, 0);
+          } catch (...) { addr = 0; }
+
+          if (addr >= 65536) {
+               m_state = ProcessState::FINISHED;
+               std::ostringstream err;
+               // Get current time
+               auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+               err << "Process " << m_name << " shut down due to memory access violation error that occurred at "
+                   << std::put_time(std::localtime(&now), "%H:%M:%S")
+                   << ". " << "0x" << std::hex << addr << " invalid.";
+               m_logs.push_back(err.str());
+               std::cout << err.str() << "\n";
+               return {ProcessState::FINISHED, {}};
+          }
+
+          auto val_opt = read_token_value(inst.args[1]);
+          if (!val_opt) {
+              m_state = ProcessState::BLOCKED_PAGE_FAULT;
+              return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+          }
+
+          auto phys = translate(addr);
+          if (!phys) {
+              set_faulting_page(addr / m_page_size);
+              m_state = ProcessState::BLOCKED_PAGE_FAULT;
+              return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+          }
+
+          // write_physical already writes 2 bytes (uint16_t)
+          MemoryManager::getInstance().write_physical(phys->first, phys->second, *val_opt);
+      }
+      ++pc;
+      break;
   }
 
   default:
+    // Unknown instruction: skip
     ++pc;
     break;
   }
 
+  // Increment executed-instruction count (skip FOR)
   if (inst.type != InstructionType::FOR) {
     ++m_metrics.executed_instructions;
   }
@@ -700,4 +811,37 @@ bool Process::set_var_value(const std::string &name, uint16_t v) {
     MemoryManager::getInstance().write_physical(phys->first, phys->second + 1, hi);
 
     return true;
+}
+
+std::optional<std::pair<size_t, size_t>> Process::translate(size_t v_addr) {
+    size_t page_num = v_addr / m_page_size;
+    size_t offset = v_addr % m_page_size;
+
+    if (page_num >= page_table_.size()) return std::nullopt;
+    if (!page_table_[page_num].valid) return std::nullopt;
+
+    return std::make_pair(page_table_[page_num].frame_idx, offset);
+}
+
+void Process::update_page_table(size_t page_num, size_t frame_idx) {
+    if (page_num >= page_table_.size()) {
+        page_table_.resize(page_num + 1);
+    }
+    page_table_[page_num].frame_idx = frame_idx;
+    page_table_[page_num].valid = true;
+    page_table_[page_num].on_disk = false;
+}
+
+void Process::invalidate_page(size_t page_num) {
+    if (page_num < page_table_.size()) {
+        page_table_[page_num].valid = false;
+        page_table_[page_num].on_disk = true;
+    }
+}
+
+void Process::initialize_memory(size_t mem_size, size_t page_size) {
+    m_page_size = page_size;
+    size_t num_pages = (mem_size + page_size - 1) / page_size;
+    page_table_.resize(num_pages);
+    current_brk_ = 0;
 }

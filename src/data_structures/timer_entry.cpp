@@ -1,6 +1,6 @@
 #include <vector>
 #include <iostream>
-#include <format>
+
 #include "../include/data_structures/timer_entry.hpp"
 
 std::vector<TimerEntry> TimerEntrySleepQueue::get_sleep_queue_snapshot() const {
@@ -40,10 +40,14 @@ std::string TimerEntrySleepQueue::snapshot() const {
         top--;
         if (counter >= ui_showlimit)
             break;
-        
+
     }
 
-    oss << ((counter > ui_showlimit) ? std::format("... and {} more \n", sleep_queue_.size() - ui_showlimit) : "\n");
+    if (counter > ui_showlimit) {
+        oss << "... and " << (sleep_queue_.size() - ui_showlimit) << " more \n";
+    } else {
+        oss << "\n";
+    }
     return oss.str();
 }
 

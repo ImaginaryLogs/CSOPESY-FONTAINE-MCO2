@@ -8,6 +8,8 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <fstream>
 
 std::string Scheduler::snapshot() {
@@ -20,7 +22,7 @@ std::string Scheduler::snapshot() {
   // --- CPU States ---
   oss << "[CPU States]:\n";
   oss << cpu_state_snapshot();
-  oss << "\n";  
+  oss << "\n";
   oss << "──────────────────────────────────────────────┬──────────────────────────────────────────────\n";
   oss_mini << "[Sleep Queue]\n"
       << (((sleep_queue_.isEmpty()))
@@ -28,19 +30,19 @@ std::string Scheduler::snapshot() {
         : sleep_queue_.snapshot());
   std::string sleep_string = oss_mini.str();
   oss_mini.str("");
-  
+
   // --- Job Queue ---
   oss_mini << "[Job Queue]\n"
       << ((job_queue_.isEmpty())
-        ? " (empty)\n\n" 
+        ? " (empty)\n\n"
         : job_queue_.snapshot());
   std::string job_string = oss_mini.str();
   oss_mini.str("");
 
   // --- Ready Queue ---
   oss_mini << "[Ready Queue]\n"
-      << (ready_queue_.isEmpty() 
-        ? "  (empty)\n\n" 
+      << (ready_queue_.isEmpty()
+        ? "  (empty)\n\n"
         : ready_queue_.snapshot());
   std::string ready_string = oss_mini.str();
   oss_mini.str("");
@@ -48,12 +50,12 @@ std::string Scheduler::snapshot() {
   // --- Finished ---
   std::string finished_snapshot = finished_queue_.snapshot();
   oss_mini  << "[Finished Processes]:\n"
-            << ((finished_snapshot.empty()) 
+            << ((finished_snapshot.empty())
             ? " (none)\n\n"
             : finished_snapshot);
   std::string finished_string = oss_mini.str();
   oss_mini.str("");
-  
+
   oss << merge_columns(sleep_string, job_string, (size_t)45, " │ ");
   oss << "\n──────────────────────────────────────────────┼──────────────────────────────────────────────\n";
   oss << merge_columns(ready_string, finished_string, (size_t)45, " │ ");
@@ -72,7 +74,7 @@ std::string Scheduler::get_sleep_queue_snapshot() {
 std::string Scheduler::cpu_state_snapshot() {
     std::vector<std::shared_ptr<Process>> procs;
     std::vector<uint32_t> quanta;
-    
+
     procs = running_;
     quanta = cpu_quantum_remaining_;
      // unlock here before printing
@@ -107,7 +109,7 @@ void Scheduler::log_status(){
         save_snapshot();
     if (cfg_.remove_finished > 0 && finished_queue_.size() > cfg_.remove_finished_capacity )
         finished_queue_.clear();
-    
+
 }
 
 void Scheduler::save_snapshot(){
