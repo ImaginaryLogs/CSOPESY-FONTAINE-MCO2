@@ -136,7 +136,7 @@ bool DynamicVictimChannel::isEmpty() {
   return victimQ_.empty();
 }
 
-
+// 
 size_t DynamicVictimChannel::size(){
   std::lock_guard<std::mutex> lock(messageMtx_);
   return victimQ_.size();

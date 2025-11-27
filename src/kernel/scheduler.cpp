@@ -12,7 +12,6 @@
 #include <sstream>
 #include <syncstream>
 
-
 Scheduler::Scheduler(const Config &cfg)
     : cfg_(cfg),
       job_queue_(Channel<std::shared_ptr<Process>>()),
@@ -170,13 +169,13 @@ void Scheduler::tick_loop()
       Scheduler::preemption_check();                    // === 1. Preemption ===
       
       Scheduler::long_term_admission();                 // === 2. Long-term scheduling: admit new jobs ===
-                                                  
+      
+      
+
       Scheduler::short_term_dispatch();                 // === 4. Short-term scheduling: dispatch to CPUs ===
-  
     }
-    // PHASE
+
     Scheduler::tick_barrier_sync("KERNEL", 3);
-    //std::cout << snapshot();
     Scheduler::log_status();
     std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
   }

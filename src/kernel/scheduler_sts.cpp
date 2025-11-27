@@ -58,7 +58,6 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
     std::cerr << "[ERROR] release_cpu_interrupt called with null process (cpu " << cpu_id << ")\n";
     return;
   }
-
   
   if (p->is_finished() || context.state == ProcessState::FINISHED){
     p->set_state(ProcessState::FINISHED);
