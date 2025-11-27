@@ -82,8 +82,8 @@ public:
   // Called by Scheduler to invalidate a page (eviction)
   void invalidate_page(size_t page_num);
 
-  // Getter for page table (for Scheduler to check on_disk flag)
-  const std::vector<PageEntry>& get_page_table() const { return page_table_; }
+  // Check if page is in backing store
+  bool is_page_on_disk(size_t page_num) const;
 
   // Helper to translate and check validity
   // Returns {frame_idx, offset} if valid

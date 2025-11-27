@@ -777,11 +777,8 @@ std::optional<uint16_t> Process::read_token_value(const std::string &token) {
       return std::nullopt; // Page fault
   }
 
-  // Read 2 bytes
-  uint8_t lo = MemoryManager::getInstance().read_physical(phys->first, phys->second);
-  uint8_t hi = MemoryManager::getInstance().read_physical(phys->first, phys->second + 1);
-
-  return (static_cast<uint16_t>(hi) << 8) | lo;
+    // Read 2 bytes (uint16_t) directly
+    return MemoryManager::getInstance().read_physical(phys->first, phys->second);
 }
 
 bool Process::set_var_value(const std::string &name, uint16_t v) {
@@ -804,11 +801,8 @@ bool Process::set_var_value(const std::string &name, uint16_t v) {
         return false; // Page fault
     }
 
-    uint8_t lo = v & 0xFF;
-    uint8_t hi = (v >> 8) & 0xFF;
-
-    MemoryManager::getInstance().write_physical(phys->first, phys->second, lo);
-    MemoryManager::getInstance().write_physical(phys->first, phys->second + 1, hi);
+    // Write 2 bytes (uint16_t) directly
+    MemoryManager::getInstance().write_physical(phys->first, phys->second, v);
 
     return true;
 }
@@ -844,4 +838,9 @@ void Process::initialize_memory(size_t mem_size, size_t page_size) {
     size_t num_pages = (mem_size + page_size - 1) / page_size;
     page_table_.resize(num_pages);
     current_brk_ = 0;
+}
+
+bool Process::is_page_on_disk(size_t page_num) const {
+    if (page_num >= page_table_.size()) return false;
+    return page_table_[page_num].on_disk;
 }

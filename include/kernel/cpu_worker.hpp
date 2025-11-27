@@ -17,6 +17,7 @@ public:
   void start();
   void stop();
   void join();
+  void detach();
 
 private:
   void loop();

@@ -40,14 +40,18 @@ void CPUWorker::join() {
   }
 }
 
+void CPUWorker::detach() {
+  if (thread_.joinable()) thread_.detach();
+}
+
 void CPUWorker::loop() {
   std::string id_str = "CPU " + std::to_string((int)this->id_);
   const char * id = id_str.c_str();
   while (running_.load()) {
 
-    while (sched_.is_paused()) 
+    while (sched_.is_paused())
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    
+
     sched_.tick_barrier_sync(id_str, 1);
     DEBUG_PRINT(DEBUG_CPU_WORKER, "%s grabs a process from cpu", id);
     auto process = sched_.dispatch_to_cpu(this->id_);
@@ -61,16 +65,16 @@ void CPUWorker::loop() {
       continue;
     }
     DEBUG_PRINT(DEBUG_CPU_WORKER, "%s executing a process", id);
-    
+
     ProcessReturnContext context = process->execute_tick(
-        sched_.current_tick(), 
+        sched_.current_tick(),
         sched_.get_scheduler_tick_delay(),
         consumed_ticks);
     std::string state = process->get_state_string();
     DEBUG_PRINT(DEBUG_CPU_WORKER, "%s executed %u with status %s\n", id, process->get_executed_instructions(), state.c_str());
-  
+
     if (is_yielded(context)) sched_.release_cpu_interrupt(this->id_, process, context);
-    
+
     sched_.tick_barrier_sync(id_str, 2); // Here, scheduler increases timer. Second tick barrier is essential
     sched_.tick_barrier_sync(id_str, 3);
   }
