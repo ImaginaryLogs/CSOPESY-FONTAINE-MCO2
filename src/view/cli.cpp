@@ -1,4 +1,6 @@
 #include "view/cli.hpp"
+#include "config.hpp"
+#include "paging/memory_manager.hpp"
 #include "processes/process.hpp"
 #include "kernel/scheduler.hpp"
 #include <iostream>
@@ -7,6 +9,11 @@
 #include <cctype>
 #include <algorithm>
 #include <memory>   // <-- needed for std::shared_ptr
+#include <fstream>
+#include <unistd.h>
+#include <cstring>
+#include <thread>
+#include <chrono>
 
 // util funcs
 
@@ -63,6 +70,9 @@ bool CLI::require_init() const {
 
 void CLI::initialize_system() {
   cfg_ = load_config("config.txt");
+
+  // Initialize MemoryManager with configuration
+  MemoryManager::getInstance().initialize(cfg_);
 
   if (scheduler_) { scheduler_->stop(); delete scheduler_; }
   scheduler_ = new Scheduler(cfg_);

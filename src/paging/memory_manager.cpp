@@ -76,6 +76,17 @@ MemoryManager::AllocationResult MemoryManager::request_page(uint32_t pid, size_t
 
     auto [frame_idx, evicted] = get_free_frame_or_evict();
 
+    // Bounds check to prevent segfault
+    if (frame_idx >= frame_owners_.size()) {
+        // This should never happen if initialized correctly
+        std::cerr << "FATAL: frame_idx " << frame_idx << " out of bounds (size=" << frame_owners_.size() << ")\n";
+        std::cerr << "  Requested by PID " << pid << ", page " << page_num << "\n";
+        std::cerr << "  frame_map_.size()=" << frame_map_.size() << "\n";
+        std::cerr << "  Is MemoryManager initialized? Check that initialize() was called.\n";
+        // Return frame 0 as fallback to prevent crash, but system is in invalid state
+        frame_idx = 0;
+    }
+
     // Update frame owner
     frame_owners_[frame_idx] = {pid, page_num};
     frame_map_[frame_idx] = true;

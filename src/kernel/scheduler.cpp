@@ -220,8 +220,15 @@ void Scheduler::handle_page_fault(std::shared_ptr<Process> p, uint64_t fault_add
 
     DEBUG_PRINT(DEBUG_SCHEDULER, "Handling page fault for Process %d, Page %zu", p->id(), page_num);
 
+    // Check if page was previously on disk (evicted before) or is brand new
+    bool load_from_disk = false;
+    auto page_table = p->get_page_table();  // Need to add this getter
+   if (page_num < page_table.size() && page_table[page_num].on_disk) {
+        load_from_disk = true;
+    }
+
     // Request page from MemoryManager
-    auto res = MemoryManager::getInstance().request_page(p->id(), page_num, true);
+    auto res = MemoryManager::getInstance().request_page(p->id(), page_num, load_from_disk);
 
     // Update current process page table
     p->update_page_table(page_num, res.frame_idx);
