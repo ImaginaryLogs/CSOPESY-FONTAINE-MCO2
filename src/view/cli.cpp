@@ -18,7 +18,7 @@ static std::string to_lower(std::string s) {
 
 static std::vector<std::string> split(const std::string &line) {
   std::istringstream iss(line);
-  std::vector<std::string> out; 
+  std::vector<std::string> out;
   std::string tok;
   while (iss >> tok) out.push_back(tok);
   return out;
@@ -156,7 +156,7 @@ int CLI::run() {
     if (cmd == "exit") {
       std::cout << "Goodbye.\n";
       scheduler_->resume();
-      
+
       break;
     }
     else if (cmd == "initialize") {
@@ -204,12 +204,24 @@ int CLI::run() {
         reporter_->write_log("csopesy-log.txt");
       }
     }
+    else if (cmd == "process-smi") {
+      if (require_init()) {
+        std::cout << reporter_->get_process_smi();
+      }
+    }
+    else if (cmd == "vmstat") {
+      if (require_init()) {
+        std::cout << reporter_->get_vmstat();
+      }
+    }
     else if (cmd == "help") {
-      std::cout << "initialize: initializes the system with config.\n" 
-                << "scheduler-start: starts the scheduler"
-                << "util: gets cpu utilization"
-                << "report-util: writes the report, saves to file."
-                << "scheduler-stop: stops the scheduler";
+      std::cout << "initialize: initializes the system with config.\n"
+                << "scheduler-start: starts the scheduler\n"
+                << "util: gets cpu utilization\n"
+                << "report-util: writes the report, saves to file.\n"
+                << "process-smi: displays memory usage of processes\n"
+                << "vmstat: displays system memory usage\n"
+                << "scheduler-stop: stops the scheduler\n";
     }
     else {
       std::cout << "Unknown command: " << line << "\n";

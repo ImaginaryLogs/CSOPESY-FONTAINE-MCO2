@@ -52,19 +52,35 @@ std::shared_ptr<Process> Scheduler::dispatch_to_cpu(uint32_t cpu_id)
 }
 
 void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context)
-{ 
+{
 
   if (!p) {
     std::cerr << "[ERROR] release_cpu_interrupt called with null process (cpu " << cpu_id << ")\n";
     return;
   }
 
-  
+
   if (p->is_finished() || context.state == ProcessState::FINISHED){
     p->set_state(ProcessState::FINISHED);
     running_[cpu_id] = nullptr;
     finished_queue_.insert(p, tick_ + 1);
+
+    {
+        std::lock_guard<std::mutex> lock(scheduler_mtx_);
+        process_map_.erase(p->id());
+    }
+
     return;
+  } else if (context.state == ProcessState::BLOCKED_PAGE_FAULT) {
+      // Page Fault
+      p->set_state(ProcessState::BLOCKED_PAGE_FAULT);
+      running_[cpu_id] = nullptr;
+
+      size_t page_num = p->get_faulting_page();
+
+      handle_page_fault(p, page_num);
+      return;
+
   } else if (p->is_waiting() || context.state == ProcessState::WAITING) {
     p->set_state(ProcessState::WAITING);
     running_[cpu_id] = nullptr;
@@ -91,13 +107,13 @@ void Scheduler::release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> 
   }
 
   p->set_state(ProcessState::READY);
-  running_[cpu_id] == nullptr;
+  running_[cpu_id] = nullptr; // Fixed typo == to =
   enqueue_ready(p);
 }
 
-void Scheduler::short_term_dispatch(){ 
+void Scheduler::short_term_dispatch(){
   DEBUG_PRINT(DEBUG_SCHEDULER, "short_term_dispatch CHECK");
-  if (this->ready_queue_.isEmpty())  
+  if (this->ready_queue_.isEmpty())
     return;
 
   for (uint32_t cpu_id = 0; cpu_id < this->cfg_.num_cpu; ++cpu_id){

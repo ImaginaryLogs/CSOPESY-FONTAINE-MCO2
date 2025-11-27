@@ -45,7 +45,7 @@ public:
   void stop();  // stops scheduler thread
 
   // === Long-Term Sceduling API ===
-  void submit_process(std::shared_ptr<Process> p); 
+  void submit_process(std::shared_ptr<Process> p);
 
   // === Paging & Swapping (Medium-term scheduler) ===
   void handle_page_fault(std::shared_ptr<Process> p, uint64_t fault_addr);
@@ -55,9 +55,9 @@ public:
   // === Short-Term Scheduling API ===
   std::shared_ptr<Process> dispatch_to_cpu(uint32_t cpu_id);
   void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
-  
+
   // === Pre-Post Scheduling API ===
-  
+
 
 
   // === Diagnostics ===
@@ -84,6 +84,7 @@ public:
   std::string get_sleep_queue_snapshot();
   size_t get_total_active_processes();
   void save_snapshot();
+  const Config& get_config() const { return cfg_; }
 
 private:
   // === Scheduler Internal Methods ===
@@ -96,7 +97,7 @@ private:
   void log_status();
   void pause_check();
   void enqueue_ready(std::shared_ptr<Process> p);
-  // === Internal Scheduler State === 
+  // === Internal Scheduler State ===
 
   Config cfg_;
   std::thread sched_thread_;
@@ -107,12 +108,12 @@ private:
   std::mutex short_term_mtx_;
   std::mutex scheduler_mtx_;
   std::mutex debug_mtx_;
-  
+
   std::unique_ptr<std::barrier<>> startup_barrier_;
   std::unique_ptr<std::barrier<BarrierPrint>> tick_sync_barrier_;
   BufferedChannel<std::string> log_queue;
   std::string cpu_state_snapshot();
-  
+
   // === Queues ===
   Channel<std::shared_ptr<Process>> job_queue_;                                           // new processes, for long-term scheduler
   DynamicVictimChannel ready_queue_;                                                      // ready process, for short-term scheduler
@@ -124,7 +125,7 @@ private:
   std::vector<std::shared_ptr<CPUWorker>> cpu_workers_; // cpu threads, indexed by cpu id
   std::vector<std::shared_ptr<Process>> running_;       // running processes, indexed by cpu id
   FinishedMap finished_queue_;      // finished processes, indexed by cpu id
-  
+
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
   std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
@@ -133,5 +134,8 @@ private:
   // === Utilities ===
   void initialize_vectors();
   void cleanup_finished_processes(uint32_t cpu_id);
-  
+  std::shared_ptr<Process> get_process(uint32_t pid);
+  std::vector<std::shared_ptr<Process>> get_all_processes() const;
+
+  std::unordered_map<uint32_t, std::shared_ptr<Process>> process_map_;
 };

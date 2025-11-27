@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 enum class ProcessState {
   // Long Term
@@ -65,9 +66,39 @@ public:
   uint32_t last_active_tick{0}; // for LRU / victim selection
   uint32_t cpu_id{256};         // which CPU last ran it
 
-  // === Program Related Members ===
+  // === Paging Support ===
   uint32_t pc{0};                                 // program counter
   std::unordered_map<std::string, uint16_t> vars; // memory storage
+  struct PageEntry {
+    size_t frame_idx{0};
+    bool valid{false};   // In RAM
+    bool on_disk{false}; // In Backing Store
+    bool dirty{false};   // Modified (tracked here or in MemoryManager? Let's track here too for consistency if needed, but MM handles eviction)
+  };
+
+  // Called by Scheduler to update page table after handling fault
+  void update_page_table(size_t page_num, size_t frame_idx);
+
+  // Called by Scheduler to invalidate a page (eviction)
+  void invalidate_page(size_t page_num);
+
+  // Helper to translate and check validity
+  // Returns {frame_idx, offset} if valid
+  // Returns nullopt if page fault (caller should return BLOCKED_PAGE_FAULT)
+  std::optional<std::pair<size_t, size_t>> translate(size_t v_addr);
+
+  // Memory limits
+  size_t memory_limit_{0};
+  size_t current_brk_{0}; // Allocator pointer
+
+  // Page Table: Index = Page Number
+  std::vector<PageEntry> page_table_;
+
+  // Symbol Table: Variable Name -> Virtual Address
+  std::unordered_map<std::string, uint32_t> symbol_table_;
+
+  // Removed old vars map
+  // std::unordered_map<std::string, uint16_t> vars;
 
   // === Execution control ===
   void set_state(ProcessState s);
@@ -108,7 +139,23 @@ public:
   ProcessReturnContext execute_tick(uint32_t global_tick, uint32_t delays_per_exec,
                             uint32_t &consumed_ticks);
 
+  // Initialize memory (called by Scheduler on startup)
+  void initialize_memory(size_t mem_size, size_t mem_per_frame);
+
+  size_t get_faulting_page() const { return last_fault_page_; }
+  void set_faulting_page(size_t page) { last_fault_page_ = page; }
+
+  struct MemoryStats {
+      size_t active_pages;
+      size_t swap_pages;
+      size_t total_pages;
+  };
+  MemoryStats get_memory_stats() const;
+
 private:
+  std::optional<uint16_t> read_token_value(const std::string &token);
+  bool set_var_value(const std::string &name, uint16_t v);
+
   uint32_t m_id;
   std::string m_name;
   std::vector<Instruction> m_instr;
@@ -121,4 +168,8 @@ private:
   uint32_t m_sleep_remaining{0};
   uint32_t m_for_stack_depth{0};
   ProcessMetrics m_metrics;
+
+  // Config copy for memory calculations (page size)
+  size_t m_page_size{16}; // Default, updated in initialize_memory
+  size_t last_fault_page_{0};
 };

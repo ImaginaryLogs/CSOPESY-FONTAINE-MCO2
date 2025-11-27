@@ -24,7 +24,7 @@ Config load_config(const std::string &path) {
 
   std::string key, value;
 
-  while (in >> key >> value) 
+  while (in >> key >> value)
   {
     key = trim(key), value = trim(value);
 
@@ -49,6 +49,12 @@ Config load_config(const std::string &path) {
     else if (key == "save-snapshot-file-rate") cfg.save_snapshot_file_rate = static_cast<uint32_t>(std::stoul(value));
     else if (key == "remove-finished") cfg.remove_finished = static_cast<uint32_t>(std::stoul(value));
     else if (key == "remove-finished-capacity") cfg.remove_finished_capacity = static_cast<uint32_t>(std::stoul(value));
+
+    // Memory Management
+    else if (key == "max-overall-mem") cfg.max_overall_mem = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "mem-per-frame") cfg.mem_per_frame = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "min-mem-per-proc") cfg.min_mem_per_proc = static_cast<uint32_t>(std::stoul(value));
+    else if (key == "max-mem-per-proc") cfg.max_mem_per_proc = static_cast<uint32_t>(std::stoul(value));
   }
   return cfg;
 }

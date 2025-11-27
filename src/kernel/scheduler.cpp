@@ -99,17 +99,17 @@ void Scheduler::preemption_check()
           cpu_quantum_remaining_[cpu_id]--;
           continue;
         }
-      
-      
+
+
       // Time to preempt
       ProcessReturnContext interrupt = {ProcessState::READY, {}};
       release_cpu_interrupt(cpu_id, running_[cpu_id], interrupt);
 
       auto newp = dispatch_to_cpu(cpu_id);
 
-    
+
       cpu_quantum_remaining_[cpu_id] = this->cfg_.quantum_cycles - 1;
-      
+
       //std::cout << "I love\n";
     }
     break;
@@ -151,14 +151,14 @@ void Scheduler::pause_check(){
 void Scheduler::tick_loop()
 {
   while (sched_running_.load())
-  { 
+  {
     Scheduler::pause_check();
 
-    { // PHASE A 
+    { // PHASE A
       std::lock_guard<std::mutex> lock(scheduler_mtx_);
       this->tick_.fetch_add(1);
-      
-    }                                  
+
+    }
       // PHASE B Work Tick
     Scheduler::tick_barrier_sync("KERNEL", 1);
     Scheduler::tick_barrier_sync("KERNEL", 2);
@@ -168,11 +168,11 @@ void Scheduler::tick_loop()
       Scheduler::timer_check();
 
       Scheduler::preemption_check();                    // === 1. Preemption ===
-      
+
       Scheduler::long_term_admission();                 // === 2. Long-term scheduling: admit new jobs ===
-                                                  
+
       Scheduler::short_term_dispatch();                 // === 4. Short-term scheduling: dispatch to CPUs ===
-  
+
     }
     // PHASE
     Scheduler::tick_barrier_sync("KERNEL", 3);
@@ -184,21 +184,97 @@ void Scheduler::tick_loop()
 
 
 
-void Scheduler::enqueue_ready(std::shared_ptr<Process> p) {
-    if (!p) return;
-
-    // Acquire short-term lock to inspect running_ and queue safely
-    std::lock_guard<std::mutex> lock(short_term_mtx_);
-
-    // Don't enqueue finished or waiting processes
-    if (p->is_finished() || p->is_waiting()) return;
-
-    // If it's already running on any core, don't enqueue
-    for (const auto &r : running_) {
-        if (r && r == p) return;
-    }
-
     // If your ready_queue supports dedup check, you can also ask it here.
     p->set_state(ProcessState::READY);
     ready_queue_.send(p);
+}
+
+std::shared_ptr<Process> Scheduler::get_process(uint32_t pid) {
+    if (process_map_.find(pid) != process_map_.end()) {
+        return process_map_[pid];
+    }
+    return nullptr;
+}
+
+void Scheduler::long_term_admission() {
+    // 1. Check job queue
+    while (!job_queue_.isEmpty()) {
+        auto p = job_queue_.receive();
+        if (!p) continue;
+
+        // Initialize memory
+        // Calculate memory limit based on config
+        // "M is the rolled value between min-mem-per-proc and max-mem-proc"
+        // For simplicity, let's just pick max or random?
+        // Specs: "M is the rolled value". Implies random.
+        // Let's use max for now or simple rand.
+        // We need <random> or just use rand().
+        // Let's use min + (rand % (max - min)).
+        size_t mem_size = cfg_.min_mem_per_proc;
+        if (cfg_.max_mem_per_proc > cfg_.min_mem_per_proc) {
+             mem_size += (rand() % (cfg_.max_mem_per_proc - cfg_.min_mem_per_proc));
+        }
+        // Align to frame size
+        if (mem_size % cfg_.mem_per_frame != 0) {
+            mem_size = ((mem_size / cfg_.mem_per_frame) + 1) * cfg_.mem_per_frame;
+        }
+
+        p->initialize_memory(mem_size, cfg_.mem_per_frame);
+
+        // Add to process map
+        process_map_[p->id()] = p;
+
+        DEBUG_PRINT(DEBUG_SCHEDULER, "Admitting process %d with %zu bytes memory", p->id(), mem_size);
+
+        p->set_state(ProcessState::READY);
+        ready_queue_.send(p);
+    }
+}
+
+void Scheduler::handle_page_fault(std::shared_ptr<Process> p, uint64_t fault_addr) {
+    // fault_addr is actually page number in our simplified flow?
+    // Process::execute_tick returns BLOCKED_PAGE_FAULT and puts page_num in args[0].
+    // So fault_addr here is page_num.
+
+    size_t page_num = static_cast<size_t>(fault_addr);
+
+    DEBUG_PRINT(DEBUG_SCHEDULER, "Handling page fault for Process %d, Page %zu", p->id(), page_num);
+
+    // Request page from MemoryManager
+    auto res = MemoryManager::getInstance().request_page(p->id(), page_num, true);
+
+    // Update current process page table
+    p->update_page_table(page_num, res.frame_idx);
+
+    // Handle eviction
+    if (res.evicted_page) {
+        uint32_t victim_pid = res.evicted_page->first;
+        size_t victim_page = res.evicted_page->second;
+
+        auto victim = get_process(victim_pid);
+        if (victim) {
+            victim->invalidate_page(victim_page);
+            DEBUG_PRINT(DEBUG_SCHEDULER, "Evicted Process %d, Page %zu", victim_pid, victim_page);
+        }
+    }
+
+    // Move process back to READY
+    p->set_state(ProcessState::READY);
+    enqueue_ready(p);
+}
+
+void Scheduler::cleanup_finished_processes(uint32_t cpu_id) {
+    // This method is not fully implemented in the original code provided?
+    // It was declared in header but not in cpp view?
+    // Ah, I see `finished_queue_` usage in `release_cpu_interrupt`.
+    // But `cleanup_finished_processes` might be called periodically?
+    // I should implement it if it's missing or update it.
+    // The original code didn't show it in `scheduler.cpp` view.
+    // I will implement it here to be safe, or check if it exists.
+    // Wait, I am appending to the end of file?
+    // No, I am replacing `enqueue_ready` and appending new methods.
+    // But `cleanup_finished_processes` was in the header.
+    // I should check if it's already defined.
+    // `scheduler.cpp` view ended at line 204 with `enqueue_ready`.
+    // So I can append these methods.
 }

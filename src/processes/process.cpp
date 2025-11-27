@@ -233,8 +233,8 @@ std::vector<std::string> Process::get_logs() {
 }
 
 // === State Query Helpers ===
-bool Process::is_new() const noexcept { 
-  return m_state == ProcessState::NEW; 
+bool Process::is_new() const noexcept {
+  return m_state == ProcessState::NEW;
 }
 bool Process::is_ready() const noexcept {
   return m_state == ProcessState::READY;
@@ -427,6 +427,11 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
     }
   }
 
+  // --- Case 3.5: Blocked on Page Fault (Resumed) ---
+  // If we were blocked, and now we are scheduled, it means the page is ready (Scheduler moved us to READY).
+  // So we retry the instruction at `pc`.
+  // No special handling needed here, just proceed to execute.
+
   // --- Case 4: Out of instructions ---
   if (pc >= m_instr.size()) {
     m_state = ProcessState::FINISHED;
@@ -444,7 +449,13 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
     // PRINT(msg) or PRINT("Hello world from <process_name>!")
     std::string out;
     if (!inst.args.empty()) {
-      out = inst.args[0];
+        // Check if arg is a variable
+        auto val_opt = read_token_value(inst.args[0]);
+        if (!val_opt) {
+             m_state = ProcessState::BLOCKED_PAGE_FAULT;
+             return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+        }
+        out = inst.args[0];
     } else {
       std::ostringstream tmp;
       tmp << "Hello world from " << m_name << "!";
@@ -456,41 +467,49 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   case InstructionType::DECLARE: {
-    // args: var, value
+    // DECLARE var value
     if (inst.args.size() >= 2) {
-      const std::string &var = inst.args[0];
-      const std::string &valtok = inst.args[1];
-      uint16_t v = read_token_value(valtok, vars);
-      set_var_value(var, v, vars);
+      auto val_opt = read_token_value(inst.args[1]);
+      if (!val_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
+
+      if (!set_var_value(inst.args[0], *val_opt)) {
+          m_state = ProcessState::BLOCKED_PAGE_FAULT;
+          return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+      }
+
 #ifdef DEBUG_PROCESS
       std::ostringstream dbg;
-      dbg << m_name << ": DECLARE " << var << " = " << v;
+      dbg << m_name << ": DECLARE " << inst.args[0] << " = " << *val_opt;
       m_logs.push_back(dbg.str());
 #endif
     } else if (inst.args.size() == 1) {
-      set_var_value(inst.args[0], 0, vars);
-#ifdef DEBUG_PROCESS
-      std::ostringstream dbg;
-      dbg << m_name << ": DECLARE " << inst.args[0] << " = 0";
-      m_logs.push_back(dbg.str());
-#endif
+       if (!set_var_value(inst.args[0], 0)) {
+          m_state = ProcessState::BLOCKED_PAGE_FAULT;
+          return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+      }
     }
     ++pc;
     break;
   }
 
   case InstructionType::ADD: {
-    // ADD(var1, var2/value, var3/value) -> var1 = var2 + var3
     if (inst.args.size() >= 3) {
-      const std::string &dst = inst.args[0];
-      uint16_t a = read_token_value(inst.args[1], vars);
-      uint16_t b = read_token_value(inst.args[2], vars);
-      uint32_t sum = static_cast<uint32_t>(a) + static_cast<uint32_t>(b);
+      auto a_opt = read_token_value(inst.args[1]);
+      if (!a_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
+
+      auto b_opt = read_token_value(inst.args[2]);
+      if (!b_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
+
+      uint32_t sum = static_cast<uint32_t>(*a_opt) + static_cast<uint32_t>(*b_opt);
       uint16_t result = clamp_uint16(sum);
-      set_var_value(dst, result, vars);
+
+      if (!set_var_value(inst.args[0], result)) {
+          m_state = ProcessState::BLOCKED_PAGE_FAULT;
+          return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+      }
 #ifdef DEBUG_PROCESS
       std::ostringstream dbg;
-      dbg << m_name << ": ADD " << dst << " = " << a << " + " << b << " = "
+      dbg << m_name << ": ADD " << inst.args[0] << " = " << *a_opt << " + " << *b_opt << " = "
           << result << (sum > 65535 ? " (clamped)" : "");
       m_logs.push_back(dbg.str());
 #endif
@@ -501,15 +520,24 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
 
   case InstructionType::SUBTRACT: {
     if (inst.args.size() >= 3) {
-      const std::string &dst = inst.args[0];
-      int32_t a = static_cast<int32_t>(read_token_value(inst.args[1], vars));
-      int32_t b = static_cast<int32_t>(read_token_value(inst.args[2], vars));
+      auto a_opt = read_token_value(inst.args[1]);
+      if (!a_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
+
+      auto b_opt = read_token_value(inst.args[2]);
+      if (!b_opt) { m_state = ProcessState::BLOCKED_PAGE_FAULT; return {ProcessState::BLOCKED_PAGE_FAULT, {}}; }
+
+      int32_t a = static_cast<int32_t>(*a_opt);
+      int32_t b = static_cast<int32_t>(*b_opt);
       int64_t res = static_cast<int64_t>(a) - static_cast<int64_t>(b);
       uint16_t result = clamp_uint16(res);
-      set_var_value(dst, result, vars);
+
+      if (!set_var_value(inst.args[0], result)) {
+          m_state = ProcessState::BLOCKED_PAGE_FAULT;
+          return {ProcessState::BLOCKED_PAGE_FAULT, {}};
+      }
 #ifdef DEBUG_PROCESS
       std::ostringstream dbg;
-      dbg << m_name << ": SUBTRACT " << dst << " = " << a << " - " << b << " = "
+      dbg << m_name << ": SUBTRACT " << inst.args[0] << " = " << a << " - " << b << " = "
           << result << (res < 0 || res > 65535 ? " (clamped)" : "");
       m_logs.push_back(dbg.str());
 #endif
@@ -519,7 +547,7 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   case InstructionType::SLEEP: {
-    // SLEEP(X) -> relinquish CPU for X ticks (WAITING)
+    // SLEEP logic (unchanged)
     uint32_t ticks = 0;
     if (!inst.args.empty() && is_number(inst.args[0])) {
       try {
@@ -529,25 +557,17 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
       }
     }
     if (ticks == 0) {
-      ++pc; // zero sleep: just continue
+      ++pc;
     } else {
       m_sleep_remaining = ticks;
       m_state = ProcessState::WAITING;
-      ++pc; // advance PC so when sleep ends we resume after SLEEP
-      
-
-      // Increment executed-instruction count (skip FOR)
+      ++pc;
       if (inst.type != InstructionType::FOR) {
         ++m_metrics.executed_instructions;
       }
-
-      // Set busy-wait delay if configured
       if (delays_per_exec > 0 && pc <= m_instr.size()) {
-        // Only set delay if more instructions remain
         m_delay_remaining = delays_per_exec;
       }
-
-      // If pc reached end after increment
       if (pc >= m_instr.size()) {
         m_state = ProcessState::FINISHED;
         m_metrics.finished_tick = global_tick;
@@ -560,19 +580,15 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   case InstructionType::FOR: {
-    // FOR should have been unrolled in constructor. If encountered, skip
-    // safely.
     ++pc;
     break;
   }
 
   default:
-    // Unknown instruction: skip
     ++pc;
     break;
   }
 
-  // Increment executed-instruction count (skip FOR)
   if (inst.type != InstructionType::FOR) {
     ++m_metrics.executed_instructions;
   }
@@ -607,4 +623,81 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
   }
 
   return {ProcessState::RUNNING, {}};
+}
+
+Process::MemoryStats Process::get_memory_stats() const {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    size_t active = 0;
+    size_t swap = 0;
+    for (const auto& page : page_table_) {
+        if (page.valid) active++;
+        if (page.on_disk) swap++;
+    }
+    return {active, swap, page_table_.size()};
+}
+// TODO: Consider renaming this not to conflict with other read_token_value.
+std::optional<uint16_t> Process::read_token_value(const std::string &token) {
+  if (is_number(token)) {
+    try {
+      return clamp_uint16(std::stoll(token));
+    } catch (...) {
+      return 0;
+    }
+  }
+
+  auto it = symbol_table_.find(token);
+  if (it == symbol_table_.end()) {
+      // Variable not found, create it
+      size_t v_addr = current_brk_;
+      size_t page_idx = v_addr / m_page_size;
+      if (page_idx >= page_table_.size()) {
+          page_table_.resize(page_idx + 1);
+      }
+
+      symbol_table_[token] = v_addr;
+      current_brk_ += 2; // uint16_t size
+      return 0;
+  }
+
+  size_t v_addr = it->second;
+  auto phys = translate(v_addr);
+  if (!phys) {
+      set_faulting_page(v_addr / m_page_size);
+      return std::nullopt; // Page fault
+  }
+
+  // Read 2 bytes
+  uint8_t lo = MemoryManager::getInstance().read_physical(phys->first, phys->second);
+  uint8_t hi = MemoryManager::getInstance().read_physical(phys->first, phys->second + 1);
+
+  return (static_cast<uint16_t>(hi) << 8) | lo;
+}
+
+bool Process::set_var_value(const std::string &name, uint16_t v) {
+    auto it = symbol_table_.find(name);
+    if (it == symbol_table_.end()) {
+        // Create variable
+        size_t v_addr = current_brk_;
+        size_t page_idx = v_addr / m_page_size;
+        if (page_idx >= page_table_.size()) {
+            page_table_.resize(page_idx + 1);
+        }
+        symbol_table_[name] = v_addr;
+        current_brk_ += 2;
+    }
+
+    size_t v_addr = symbol_table_[name];
+    auto phys = translate(v_addr);
+    if (!phys) {
+        set_faulting_page(v_addr / m_page_size);
+        return false; // Page fault
+    }
+
+    uint8_t lo = v & 0xFF;
+    uint8_t hi = (v >> 8) & 0xFF;
+
+    MemoryManager::getInstance().write_physical(phys->first, phys->second, lo);
+    MemoryManager::getInstance().write_physical(phys->first, phys->second + 1, hi);
+
+    return true;
 }

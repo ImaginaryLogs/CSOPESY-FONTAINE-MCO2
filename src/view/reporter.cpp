@@ -1,10 +1,12 @@
 #include "view/reporter.hpp"
 #include "kernel/scheduler.hpp"
+#include "paging/memory_manager.hpp"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <ctime>
+#include <algorithm>
 
 Reporter::Reporter(Scheduler &sched) : sched_(sched) {}
 
@@ -28,8 +30,10 @@ static void derive_utilization(Scheduler &sched, int &used, int &total) {
     total = u.total;
 }
 
+
+
 std::string Reporter::build_report() {
-  
+
   int used=0, total=0;
   derive_utilization(sched_, used, total);
   int available = std::max(0, total - used);
@@ -41,6 +45,73 @@ std::string Reporter::build_report() {
       << "Cores available: " << available << "\n\n"
       << sched_.snapshot() << "\n";
   return oss.str();
+}
+
+// NOTE: Added by Antigravity. Feel free to revise/remove.
+std::string Reporter::get_process_smi() {
+    std::ostringstream oss;
+    oss << "\n";
+    oss << "---------------------------------------------------------------------------\n";
+    oss << "| Process ID | Process Name | Active Pages | Total Pages | Swap Space |\n";
+    oss << "---------------------------------------------------------------------------\n";
+
+    auto processes = sched_.get_all_processes();
+    // Sort by PID
+    std::sort(processes.begin(), processes.end(), [](const auto& a, const auto& b) {
+        return a->id() < b->id();
+    });
+
+    for (const auto& p : processes) {
+        auto stats = p->get_memory_stats();
+        oss << "| " << std::left << std::setw(11) << p->id()
+            << "| " << std::setw(13) << p->name()
+            << "| " << std::setw(13) << stats.active_pages
+            << "| " << std::setw(12) << stats.total_pages
+            << "| " << std::setw(11) << stats.swap_pages << "|\n";
+    }
+    oss << "---------------------------------------------------------------------------\n";
+    return oss.str();
+}
+
+// NOTE: Added by Antigravity. Feel free to revise/remove.
+std::string Reporter::get_vmstat() {
+    std::ostringstream oss;
+    auto& mm = MemoryManager::getInstance();
+
+    // Memory Stats
+    size_t total_frames = mm.get_total_frames();
+    size_t free_frames = mm.get_free_frames_count();
+    size_t used_frames = total_frames - free_frames;
+
+    const Config& cfg = sched_.get_config();
+    size_t total_mem_kb = cfg.max_overall_mem; // Assuming config is in KB? Or bytes?
+    // Specs say "max-overall-mem 16384" (KB presumably, or units not specified but example says KB)
+    // Example: "Total Memory: 16384 KB".
+    // If config value is 16384, then it matches.
+
+    size_t used_mem_kb = used_frames * cfg.mem_per_frame;
+    size_t free_mem_kb = free_frames * cfg.mem_per_frame;
+
+    // CPU Stats
+    int used_cpu=0, total_cpu=0;
+    derive_utilization(sched_, used_cpu, total_cpu);
+    int cpu_percent = (total_cpu>0) ? (used_cpu*100/total_cpu) : 0;
+    int idle_percent = 100 - cpu_percent;
+
+    // Paging Stats
+    size_t paged_in = mm.get_paged_in_count();
+    size_t paged_out = mm.get_paged_out_count();
+
+    oss << "\n";
+    oss << "Total Memory: " << total_mem_kb << " KB\n";
+    oss << "Used Memory: " << used_mem_kb << " KB\n";
+    oss << "Free Memory: " << free_mem_kb << " KB\n";
+    oss << "Idle CPU: " << idle_percent << "%\n";
+    oss << "Active CPU: " << cpu_percent << "%\n";
+    oss << "Pages Paged In: " << paged_in << "\n";
+    oss << "Pages Paged Out: " << paged_out << "\n";
+
+    return oss.str();
 }
 
 void Reporter::write_log(const std::string &path) {
