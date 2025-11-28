@@ -55,7 +55,10 @@ std::string FinishedMap::snapshot()
         auto &[tick, p] = *entryPtr;
 
         std::tm tm_buf{};
-        localtime_r(&t, &tm_buf);
+        #ifdef _WIN32
+            localtime_s(&tm_buf, &t);
+        #else
+            localtime_r(&t, &tm_buf);
 
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"
@@ -92,7 +95,10 @@ std::string FinishedMap::print()
         auto &[tick, p] = *entryPtr;
 
         std::tm tm_buf{};
-        localtime_r(&t, &tm_buf);
+        #ifdef _WIN32
+            localtime_s(&tm_buf, &t);
+        #else
+            localtime_r(&t, &tm_buf);
 
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"
