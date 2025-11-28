@@ -59,7 +59,7 @@ std::string FinishedMap::snapshot()
             localtime_s(&tm_buf, &t);
         #else
             localtime_r(&t, &tm_buf);
-
+        #endif
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"
             << p->get_executed_instructions() << " / "
@@ -99,7 +99,7 @@ std::string FinishedMap::print()
             localtime_s(&tm_buf, &t);
         #else
             localtime_r(&t, &tm_buf);
-
+        #endif
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"
             << p->get_executed_instructions() << " / "
