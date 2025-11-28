@@ -16,6 +16,7 @@ void FinishedMap::insert(ProcessPtr p, uint32_t finished_tick)
     time_t now = std::time(nullptr);
 
     finished_by_time_.emplace(now, std::make_shared<OrderedFinishedEntry>(finished_tick, p));
+    ++completed;
 }
 
 // Clear all finished processes
@@ -39,11 +40,14 @@ std::string FinishedMap::snapshot()
     uint16_t counter = 0;
     uint16_t top = finished_by_time_.size();
     const int ui_showlimit = 10;
-    if (finished_by_time_.empty())
-        return "";
-
-    oss << "Finished Time\tName\tProgress\t#\n";
-    oss << "------------------------------------\n";
+    if (finished_by_time_.empty()) {
+        oss << "Completed Processes:" << completed;
+        return oss.str();
+    }
+    oss << "Completed Processes:" << completed << "\n"
+        << "Top Stored Processes: \n"
+        << "(Finished Time)\t\tName\tProgress\t#\n"
+        << "------------------------------------\n";
 
     for (auto it = finished_by_time_.rbegin(); it != finished_by_time_.rend(); ++it)
     {

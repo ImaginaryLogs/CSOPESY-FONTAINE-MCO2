@@ -57,11 +57,12 @@ public:
   void release_cpu_interrupt(uint32_t cpu_id, std::shared_ptr<Process> p, ProcessReturnContext context);
 
   // === Pre-Post Scheduling API ===
-
+  
 
 
   // === Diagnostics ===
   std::string snapshot(); // returns screen-ls string
+  std::string snapshot_with_log();
   uint32_t current_tick() const;
   CpuUtilization cpu_utilization() const;
   // === Singleton Accessor ===
@@ -83,7 +84,7 @@ public:
   void setSchedulingPolicy(SchedulingPolicy policy_);
   std::string get_sleep_queue_snapshot();
   size_t get_total_active_processes();
-  void save_snapshot();
+  void save_snapshot(std::string prefix);
   const Config& get_config() const { return cfg_; }
   std::shared_ptr<Process> get_process(uint32_t pid);
   std::vector<std::shared_ptr<Process>> get_all_processes() const;

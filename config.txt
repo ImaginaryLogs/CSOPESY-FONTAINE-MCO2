@@ -2,10 +2,10 @@ num-cpu 4
 scheduler rr
 quantum-cycles 50
 batch-process-freq 1
-min-ins 300
+min-ins 200
 max-ins 500
 delay-per-exec 1
-scheduler-tick-delay 0
-save-snapshot-file-rate 5
+scheduler-tick-delay 1
+save-snapshot-file-rate 1
 remove-finished 1
 remove-finished-capacity 100
