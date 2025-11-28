@@ -1,6 +1,6 @@
-#include "../include/scheduler.hpp"
+#include "../include/kernel/scheduler.hpp"
 #include "../include/config.hpp"
-#include "../include/process.hpp"
+#include "../include/processes/process.hpp"
 #include "../include/cpu_worker.hpp"
 #include <thread>
 #include <chrono>
@@ -14,11 +14,11 @@ void test_sleep_multicore(uint32_t n){
       {InstructionType::PRINT, {"P1-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr2 = { 
+  std::vector<Instruction> instr2 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr3 = { 
+  std::vector<Instruction> instr3 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
@@ -42,7 +42,7 @@ void test_sleep_multicore(uint32_t n){
   std::cout << "Submitting processes P1 and P2.\n";
 
   sched.submit_process(p1);
-  sched.submit_process(p2); 
+  sched.submit_process(p2);
   sched.submit_process(p3);
   sched.setSchedulingPolicy(SchedulingPolicy::RR);
 
@@ -61,7 +61,7 @@ void test_sleep_multicore(uint32_t n){
   auto logs_p1 = p1->get_logs();
   auto logs_p2 = p2->get_logs();
   auto logs_sched = sched.get_sched_snapshots();//
-  
+
   std::cout << "P1 logs:\n";
   for (const auto &log : logs_p1)
   {

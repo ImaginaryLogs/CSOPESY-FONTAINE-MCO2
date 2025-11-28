@@ -1,7 +1,7 @@
-#include "../include/instruction.hpp"
-#include "../include/process.hpp"
-#include "../include/process_generator.hpp"
-#include "../include/scheduler.hpp"
+#include "../include/processes/instruction.hpp"
+#include "../include/processes/process.hpp"
+#include "../include/processes/process_generator.hpp"
+#include "../include/kernel/scheduler.hpp"
 #include <atomic>
 #include <cassert>
 #include <chrono>

@@ -1,6 +1,6 @@
-#include "../include/scheduler.hpp"
+#include "../include/kernel/scheduler.hpp"
 #include "../include/config.hpp"
-#include "../include/process.hpp"
+#include "../include/processes/process.hpp"
 #include "../include/cpu_worker.hpp"
 #include <thread>
 #include <chrono>
@@ -14,11 +14,11 @@ void test_scheduler_algo(bool use_rr)
       {InstructionType::PRINT, {"P1-1"}},
       {InstructionType::PRINT, {"P1-2"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr2 = { 
+  std::vector<Instruction> instr2 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::PRINT, {"P2-2"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr3 = { 
+  std::vector<Instruction> instr3 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::PRINT, {"P2-2"}},
       {InstructionType::PRINT, {"P2-3"}}};
@@ -61,7 +61,7 @@ void test_scheduler_algo(bool use_rr)
   auto logs_p1 = p1->get_logs();
   auto logs_p2 = p2->get_logs();
   auto logs_sched = sched.get_sched_snapshots();
-  
+
   std::cout << "P1 logs:\n";
   for (const auto &log : logs_p1)
   {
@@ -83,7 +83,7 @@ void test_scheduler_algo(bool use_rr)
   {
     // P1 should run fully before P2 starts
     std::cout << "Verifying FCFS execution order.\n";
-    
+
     assert(logs_p1.size() >= 3);
     assert(logs_p1[0] == "P1-1");
     assert(logs_p1[1] == "P1-2");
@@ -147,11 +147,11 @@ void test_sleep(){
       {InstructionType::PRINT, {"P1-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr2 = { 
+  std::vector<Instruction> instr2 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
-  std::vector<Instruction> instr3 = { 
+  std::vector<Instruction> instr3 = {
       {InstructionType::PRINT, {"P2-1"}},
       {InstructionType::SLEEP, {"3"}},
       {InstructionType::PRINT, {"P2-3"}}};
@@ -175,7 +175,7 @@ void test_sleep(){
   std::cout << "Submitting processes P1 and P2.\n";
 
   sched.submit_process(p1);
-  sched.submit_process(p2); 
+  sched.submit_process(p2);
   sched.submit_process(p3);
   sched.setSchedulingPolicy(SchedulingPolicy::FCFS);
 
@@ -194,7 +194,7 @@ void test_sleep(){
   auto logs_p1 = p1->get_logs();
   auto logs_p2 = p2->get_logs();
   auto logs_sched = sched.get_sched_snapshots();
-  
+
   std::cout << "P1 logs:\n";
   for (const auto &log : logs_p1)
   {
