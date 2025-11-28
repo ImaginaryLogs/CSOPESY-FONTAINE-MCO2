@@ -6,6 +6,6 @@ min-ins 300
 max-ins 500
 delay-per-exec 1
 scheduler-tick-delay 0
-save-snapshot-file-rate 5
+save-snapshot-file-rate 1
 remove-finished 1
 remove-finished-capacity 100

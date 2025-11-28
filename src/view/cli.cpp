@@ -186,7 +186,6 @@ int CLI::run() {
     else if (cmd == "util") {
       if (require_init()) {
         CpuUtilization util = scheduler_->cpu_utilization();
-
         std::cout << "CPU utilization: " << static_cast<int>(util.percent) << "%\n"
                   << "Cores used: " << util.used << "\n"
                   << "Cores available: " << util.total << "\n";

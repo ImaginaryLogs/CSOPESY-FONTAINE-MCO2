@@ -1,7 +1,7 @@
-#include "../include/instruction.hpp"
-#include "../include/process.hpp"
-#include "../include/process_generator.hpp"
-#include "../include/scheduler.hpp"
+#include "processes/instruction.hpp"
+#include "processes/process.hpp"
+#include "processes/process_generator.hpp"
+#include "kernel/scheduler.hpp"
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -38,7 +38,7 @@ int main() {
     Process p(2, "arith", ins);
     uint32_t tick = 0, consumed = 0;
 
-    while (p.execute_tick(++tick, 0, consumed) != ProcessState::FINISHED)
+    while (p.execute_tick(++tick, 0, consumed).state != ProcessState::FINISHED)
       ;
 
     assert(p.vars.at("x") == 12); // (10 + 5) - 3
@@ -78,7 +78,7 @@ int main() {
     Process p(4, "clamp", ins);
     uint32_t tick = 0, consumed = 0;
 
-    while (p.execute_tick(++tick, 0, consumed) != ProcessState::FINISHED)
+    while (p.execute_tick(++tick, 0, consumed).state != ProcessState::FINISHED)
       ;
 
     assert(p.vars.at("a") == 0 || p.vars.at("a") == 65535);
@@ -93,7 +93,7 @@ int main() {
 
     Process p(5, "logger", ins);
     uint32_t tick = 0, consumed = 0;
-    while (p.execute_tick(++tick, 0, consumed) != ProcessState::FINISHED)
+    while (p.execute_tick(++tick, 0, consumed).state != ProcessState::FINISHED)
       ;
 
     auto logs = p.get_logs();
@@ -121,7 +121,7 @@ int main() {
     Process p(7, "empty", ins);
     uint32_t tick = 0, consumed = 0;
 
-    ProcessState result = p.execute_tick(++tick, 0, consumed);
+    ProcessState result = p.execute_tick(++tick, 0, consumed).state;
     assert(result == ProcessState::FINISHED);
     assert(p.state() == ProcessState::FINISHED);
     std::cout << "Test 7 passed: Empty process finishes instantly.\n";
@@ -160,7 +160,7 @@ int main() {
 
     std::thread exec_thread([&]() {
       uint32_t tick = 0, consumed = 0;
-      while (p.execute_tick(++tick, 0, consumed) != ProcessState::FINISHED)
+      while (p.execute_tick(++tick, 0, consumed).state != ProcessState::FINISHED)
         ;
       done = true;
     });
@@ -188,7 +188,7 @@ int main() {
 
     Process p(10, "vars", ins);
     uint32_t tick = 0, consumed = 0;
-    while (p.execute_tick(++tick, 0, consumed) != ProcessState::FINISHED)
+    while (p.execute_tick(++tick, 0, consumed).state != ProcessState::FINISHED)
       ;
 
     assert(p.vars.at("a") == 12);
@@ -202,7 +202,7 @@ int main() {
                                     {InstructionType::PRINT, {"fast"}}};
     Process p(11, "busy", ins);
     uint32_t tick = 0, consumed = 0;
-    while (p.execute_tick(++tick, 2, consumed) != ProcessState::FINISHED)
+    while (p.execute_tick(++tick, 2, consumed).state != ProcessState::FINISHED)
       ;
     assert(p.get_executed_instructions() == 2);
     std::cout << "Test 11 passed: Delays handled correctly.\n";
