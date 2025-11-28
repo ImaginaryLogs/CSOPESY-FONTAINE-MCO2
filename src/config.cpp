@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include <iostream>
 
 static std::string trim(std::string s) {
   auto notspace = [](int ch){ return !std::isspace(ch); };
@@ -56,5 +57,17 @@ Config load_config(const std::string &path) {
     else if (key == "min-mem-per-proc") cfg.min_mem_per_proc = static_cast<uint32_t>(std::stoul(value));
     else if (key == "max-mem-per-proc") cfg.max_mem_per_proc = static_cast<uint32_t>(std::stoul(value));
   }
+
+  // Validation
+  // Check if max-overall-mem and mem-per-frame are powers of 2
+  auto is_power_of_2 = [](uint32_t n) { return n > 0 && (n & (n - 1)) == 0; };
+
+  if (!is_power_of_2(cfg.max_overall_mem)) {
+      std::cerr << "Warning: max-overall-mem (" << cfg.max_overall_mem << ") is not a power of 2. Adjusting to nearest power of 2 not implemented, please fix config.\n";
+  }
+  if (!is_power_of_2(cfg.mem_per_frame)) {
+      std::cerr << "Warning: mem-per-frame (" << cfg.mem_per_frame << ") is not a power of 2.\n";
+  }
+
   return cfg;
 }

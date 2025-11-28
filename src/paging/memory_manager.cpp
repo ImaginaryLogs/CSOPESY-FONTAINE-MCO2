@@ -29,7 +29,11 @@ void MemoryManager::initialize(const Config& cfg) {
     paged_out_count_ = 0;
 
     // Create backing store directory
-    if (!fs::exists("backing_store")) {
+    if (fs::exists("backing_store")) {
+        for (const auto& entry : fs::directory_iterator("backing_store")) {
+            fs::remove_all(entry.path());
+        }
+    } else {
         fs::create_directory("backing_store");
     }
 }

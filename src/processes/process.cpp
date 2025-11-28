@@ -625,8 +625,9 @@ ProcessReturnContext Process::execute_tick(uint32_t global_tick,
               // Memory Violation
               m_state = ProcessState::FINISHED; // Terminate
               std::ostringstream err;
+              auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
               err << "Process " << m_name << " shut down due to memory access violation error that occurred at "
-                  << std::put_time(std::localtime(&m_metrics.start_time), "%H:%M:%S") // Approximate time
+                  << std::put_time(std::localtime(&now), "%H:%M:%S") // Current time
                   << ". " << "0x" << std::hex << addr << " invalid.";
               m_logs.push_back(err.str());
               std::cout << err.str() << "\n"; // Print to console as per specs

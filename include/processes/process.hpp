@@ -110,6 +110,8 @@ public:
   uint32_t get_core_id() const;
   void set_name(std::string);
   ProcessState get_state();
+  size_t get_memory_requirement() const { return m_memory_requirement_; }
+  void set_memory_requirement(size_t size) { m_memory_requirement_ = size; }
   // === Helpers ===
   uint32_t get_total_instructions() const;
   uint32_t get_executed_instructions() const;
@@ -175,4 +177,5 @@ private:
   // Config copy for memory calculations (page size)
   size_t m_page_size{16}; // Default, updated in initialize_memory
   size_t last_fault_page_{0};
+  size_t m_memory_requirement_{0};
 };

@@ -239,25 +239,12 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
       const uint32_t pid = user_pid++;
 
       auto p = std::make_shared<Process>(pid, name, ins);
-      // Set memory limit? Process class doesn't strictly enforce limit at creation,
-      // but Scheduler initializes it.
-      // Wait, Scheduler::long_term_admission initializes memory based on config.
-      // But here we want custom memory size.
-      // We might need to set a hint or force it.
-      // Process::initialize_memory is called by Scheduler.
-      // Maybe we can set a property on Process?
-      // Or we can initialize it right now if we bypass long_term_admission?
-      // But we submit to scheduler.
-      // Let's add a `required_memory` field to Process or Config override?
-      // For now, let's assume Scheduler respects it if we set it?
-      // Actually, Scheduler overwrites it in `long_term_admission`.
-      // We should probably modify Scheduler to respect pre-set memory size?
-      // Or add `Process::set_memory_requirement(size_t)`.
-      // Let's assume we can set it and Scheduler checks if already set?
-      // Scheduler calls `p->initialize_memory`.
-      // We can add `p->set_initial_memory_size(mem_size)`.
 
-      // For now, let's just submit.
+      // Set memory requirement if specified
+      if (mem_size > 0) {
+        p->set_memory_requirement(mem_size);
+      }
+
       scheduler_->submit_process(p);
       std::cout << "Process " << name << " created with " << ins.size() << " instructions.\n";
       return;
