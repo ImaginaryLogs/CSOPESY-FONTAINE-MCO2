@@ -50,7 +50,18 @@ std::string Reporter::build_report() {
 // NOTE: Added by Antigravity. Feel free to revise/remove.
 std::string Reporter::get_process_smi() {
     std::ostringstream oss;
-    oss << "\n";
+  oss << "\n";
+  // Memory summary header
+  auto &mm = MemoryManager::getInstance();
+  const Config &cfg = sched_.get_config();
+  size_t total_frames = mm.get_total_frames();
+  size_t free_frames = mm.get_free_frames_count();
+  size_t used_frames = total_frames - free_frames;
+  size_t total_kb = total_frames * cfg.mem_per_frame; // treat as KB per assignment spec
+  size_t used_kb = used_frames * cfg.mem_per_frame;
+  size_t free_kb = free_frames * cfg.mem_per_frame;
+  oss << "Memory: total=" << total_kb << " KB, used=" << used_kb
+    << " KB, free=" << free_kb << " KB\n";
     oss << "---------------------------------------------------------------------------\n";
     oss << "| Process ID | Process Name | Active Pages | Total Pages | Swap Space |\n";
     oss << "---------------------------------------------------------------------------\n";
@@ -84,12 +95,9 @@ std::string Reporter::get_vmstat() {
     size_t used_frames = total_frames - free_frames;
 
     const Config& cfg = sched_.get_config();
-    size_t total_mem_kb = cfg.max_overall_mem; // Assuming config is in KB? Or bytes?
-    // Specs say "max-overall-mem 16384" (KB presumably, or units not specified but example says KB)
-    // Example: "Total Memory: 16384 KB".
-    // If config value is 16384, then it matches.
-
-    size_t used_mem_kb = used_frames * cfg.mem_per_frame;
+    // Values are in bytes as per config and frame size
+    size_t total_mem_kb = cfg.max_overall_mem;                // treat values as KB to match rubric
+    size_t used_mem_kb = used_frames * cfg.mem_per_frame;     // frames * frame size (KB)
     size_t free_mem_kb = free_frames * cfg.mem_per_frame;
 
     // CPU Stats
@@ -102,12 +110,17 @@ std::string Reporter::get_vmstat() {
     size_t paged_in = mm.get_paged_in_count();
     size_t paged_out = mm.get_paged_out_count();
 
+    auto ticks = sched_.cpu_tick_stats();
+
     oss << "\n";
     oss << "Total Memory: " << total_mem_kb << " KB\n";
     oss << "Used Memory: " << used_mem_kb << " KB\n";
     oss << "Free Memory: " << free_mem_kb << " KB\n";
     oss << "Idle CPU: " << idle_percent << "%\n";
     oss << "Active CPU: " << cpu_percent << "%\n";
+    oss << "Idle CPU Ticks: " << ticks.idle << "\n";
+    oss << "Active CPU Ticks: " << ticks.busy << "\n";
+    oss << "Total CPU Ticks: " << ticks.total << "\n";
     oss << "Pages Paged In: " << paged_in << "\n";
     oss << "Pages Paged Out: " << paged_out << "\n";
 

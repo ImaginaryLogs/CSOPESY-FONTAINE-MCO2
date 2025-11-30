@@ -1,0 +1,5 @@
+initialize
+scheduler-test
+process-smi
+screen -ls
+vmstat

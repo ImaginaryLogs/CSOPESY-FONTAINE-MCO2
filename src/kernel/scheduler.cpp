@@ -12,6 +12,7 @@
 #include <chrono>
 #include <sstream>
 #include <syncstream>
+#include <fstream>
 
 
 Scheduler::Scheduler(const Config &cfg)
@@ -40,7 +41,7 @@ void Scheduler::start()
     return;
 
   sched_running_.store(true);
-  std::cout << "Scheduler started.\n";
+  std::cout << "Scheduler started.\n" << std::flush;
 
   // All CPU Threads + Scheduler Thread synchronize here
 
@@ -152,35 +153,46 @@ void Scheduler::pause_check(){
 // === Main Loop ===
 void Scheduler::tick_loop()
 {
-  while (sched_running_.load())
-  {
-    Scheduler::pause_check();
+  try {
+    while (sched_running_.load())
+    {
+      Scheduler::pause_check();
 
-    { // PHASE A
-      std::lock_guard<std::mutex> lock(scheduler_mtx_);
-      this->tick_.fetch_add(1);
+      { // PHASE A
+        std::lock_guard<std::mutex> lock(scheduler_mtx_);
+        this->tick_.fetch_add(1);
 
+      }
+        // PHASE B Work Tick
+      Scheduler::tick_barrier_sync("KERNEL", 1);
+      Scheduler::tick_barrier_sync("KERNEL", 2);
+
+      { // PHASE C Assign Tick
+        std::lock_guard<std::mutex> lock(scheduler_mtx_);
+        Scheduler::timer_check();
+
+        Scheduler::preemption_check();                    // === 1. Preemption ===
+
+        Scheduler::long_term_admission();                 // === 2. Long-term scheduling: admit new jobs ===
+
+        Scheduler::short_term_dispatch();                 // === 4. Short-term scheduling: dispatch to CPUs ===
+
+      }
+      // PHASE
+      Scheduler::tick_barrier_sync("KERNEL", 3);
+      //std::cout << snapshot();
+      Scheduler::log_status();
+      // Sleep happens here - workers must also respect the tick delay
+      std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
     }
-      // PHASE B Work Tick
-    Scheduler::tick_barrier_sync("KERNEL", 1);
-    Scheduler::tick_barrier_sync("KERNEL", 2);
-
-    { // PHASE C Assign Tick
-      std::lock_guard<std::mutex> lock(scheduler_mtx_);
-      Scheduler::timer_check();
-
-      Scheduler::preemption_check();                    // === 1. Preemption ===
-
-      Scheduler::long_term_admission();                 // === 2. Long-term scheduling: admit new jobs ===
-
-      Scheduler::short_term_dispatch();                 // === 4. Short-term scheduling: dispatch to CPUs ===
-
-    }
-    // PHASE
-    Scheduler::tick_barrier_sync("KERNEL", 3);
-    //std::cout << snapshot();
-    Scheduler::log_status();
-    std::this_thread::sleep_for(std::chrono::milliseconds(Scheduler::get_scheduler_tick_delay()));
+  } catch (const std::exception &ex) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "Scheduler exception: " << ex.what() << "\n";
+    f.close();
+  } catch (...) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "Scheduler unknown exception\n";
+    f.close();
   }
 }
 

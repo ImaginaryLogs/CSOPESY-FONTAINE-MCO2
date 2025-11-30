@@ -16,8 +16,10 @@ SRC_DIR := src
 BUILD_DIR := build
 TARGET := $(BUILD_DIR)/app
 
-# Sources and objects
-SRC := $(shell find $(SRC_DIR) -name '*.cpp')
+# Sources and objects (portable recursive collection up to 3 levels)
+SRC := $(wildcard $(SRC_DIR)/*.cpp) \
+	$(wildcard $(SRC_DIR)/*/*.cpp) \
+	$(wildcard $(SRC_DIR)/*/*/*.cpp)
 OBJ := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
 # Test configuration (can override with TEST=name)
@@ -36,14 +38,14 @@ $(TARGET): $(OBJ) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	@mkdir -p $(dir $@)
+	@if not exist $(dir $@) mkdir $(dir $@)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 # $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 # 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 $(BUILD_DIR):
-	mkdir -p $@
+	@if not exist $@ mkdir $@
 
 
 
@@ -53,10 +55,8 @@ $(BUILD_DIR):
 test: $(TEST_BIN)
 	./$(TEST_BIN)
 
-$(TEST_BIN): $(TEST_SRC) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) \
-		$(TEST_SRC) $(filter-out $(SRC_DIR)/main.cpp,$(wildcard $(SRC_DIR)/*.cpp)) \
-		-o $@
+$(TEST_BIN): $(TEST_SRC) $(filter-out $(SRC_DIR)/main.cpp,$(SRC)) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@
 
 # ===============================
 # Debug build (adds -g -O0)

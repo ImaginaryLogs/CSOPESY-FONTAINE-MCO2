@@ -10,6 +10,7 @@
 void Scheduler::initialize_vectors() {
   this->running_ = std::vector<std::shared_ptr<Process>>(cfg_.num_cpu, nullptr);
   this->busy_ticks_per_cpu_ = std::vector<uint64_t>(cfg_.num_cpu, 0);
+  this->idle_ticks_per_cpu_ = std::vector<uint64_t>(cfg_.num_cpu, 0);
   this->cpu_quantum_remaining_ = std::vector<uint32_t>(cfg_.num_cpu, cfg_.quantum_cycles - 1);
 }
 
@@ -82,6 +83,31 @@ CpuUtilization Scheduler::cpu_utilization() const {
       : 0.0;
 
   return CpuUtilization{used, total, pct};
+}
+
+Scheduler::CpuTickStats Scheduler::cpu_tick_stats() const {
+  uint64_t busy = 0, idle = 0;
+  for (size_t i = 0; i < busy_ticks_per_cpu_.size(); ++i) {
+    busy += busy_ticks_per_cpu_[i];
+  }
+  for (size_t i = 0; i < idle_ticks_per_cpu_.size(); ++i) {
+    idle += idle_ticks_per_cpu_[i];
+  }
+  return CpuTickStats{busy, idle, busy + idle};
+}
+
+void Scheduler::account_cpu_busy(uint32_t cpu_id) {
+  if (cpu_id < busy_ticks_per_cpu_.size()) {
+    std::lock_guard<std::mutex> lock(scheduler_mtx_);
+    ++busy_ticks_per_cpu_[cpu_id];
+  }
+}
+
+void Scheduler::account_cpu_idle(uint32_t cpu_id) {
+  if (cpu_id < idle_ticks_per_cpu_.size()) {
+    std::lock_guard<std::mutex> lock(scheduler_mtx_);
+    ++idle_ticks_per_cpu_[cpu_id];
+  }
 }
 
 void BarrierPrint::operator()() const noexcept{

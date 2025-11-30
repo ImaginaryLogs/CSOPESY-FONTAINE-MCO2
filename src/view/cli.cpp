@@ -14,6 +14,8 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
 
 // util funcs
 
@@ -43,7 +45,7 @@ static void print_banner() {
     << "  Dellosa, Mariella Jeanne A.\n"
     << "Section: CSOPESY-S13\n"
     << "---------------------------------------------\n"
-    << "System initializing... please wait.\n\n";
+      << "System initializing... please wait.\n\n" << std::flush;
 }
 
 static void prompt() { std::cout << "csopesy> " << std::flush; }
@@ -62,7 +64,7 @@ CLI::~CLI() {
 
 bool CLI::require_init() const {
   if (!initialized_) {
-    std::cout << "Please run initialize first.\n";
+    std::cout << "Please run initialize first.\n" << std::flush;
     return false;
   }
   return true;
@@ -77,6 +79,7 @@ void CLI::initialize_system() {
   if (scheduler_) { scheduler_->stop(); delete scheduler_; }
   scheduler_ = new Scheduler(cfg_);
   scheduler_->start();
+  scheduler_->resume(); // Ensure scheduler is running immediately
 
   // One-time CPU idle snapshot after scheduler starts
   for (uint32_t i = 0; i < cfg_.num_cpu; ++i)
@@ -89,7 +92,7 @@ void CLI::initialize_system() {
   reporter_ = new Reporter(*scheduler_);
 
   initialized_ = true;
-  std::cout << "Initialization complete.\n";
+  std::cout << "Initialization complete.\n" << std::flush;
 }
 
 void CLI::attach_process_screen(const std::string& name, const std::shared_ptr<Process>& proc) {
@@ -106,7 +109,7 @@ void CLI::attach_process_screen(const std::string& name, const std::shared_ptr<P
       if (proc->state() == ProcessState::FINISHED)
         std::cout << "Finished!\n";
     } else {
-      std::cout << "Unknown command.\n";
+      std::cout << "Unknown command.\n" << std::flush;
     }
   }
 }
@@ -115,12 +118,23 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
   if (!require_init()) return;
 
   if (args.size() >= 2 && args[1] == "-ls") {
-    std::cout << reporter_->build_report();
+    std::cout << reporter_->build_report() << std::flush;
     return;
   }
 
   if (args.size() >= 3 && args[1] == "-s") {
     const std::string name = args[2];
+    // Optional memory_size argument
+    size_t mem_size = 0;
+    if (args.size() >= 4) {
+      try { mem_size = static_cast<size_t>(std::stoul(args[3])); } catch (...) { mem_size = 0; }
+      auto is_power_of_2 = [](size_t n){ return n && ((n & (n-1)) == 0); };
+      if (!(mem_size >= 64 && mem_size <= 65536 && is_power_of_2(mem_size))) {
+        std::cout << "invalid memory allocation\n" << std::flush;
+        return;
+      }
+    }
+
     uint32_t est = 0;
     auto ins = generator_->generate_instructions(cfg_.min_ins, est);
 
@@ -128,10 +142,11 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
     const uint32_t pid = user_pid++;
 
     auto p = std::make_shared<Process>(pid, name, ins);
+    if (mem_size) p->set_memory_requirement(mem_size);
     screen_mgr_.create_screen(name, p);
     scheduler_->submit_process(p);
 
-    std::cout << "Created process " << name << "\n";
+    std::cout << "Created process " << name << "\n" << std::flush;
     return;
   }
 
@@ -140,7 +155,7 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
     auto proc = screen_mgr_.find(name);
 
     if (!proc) {
-      std::cout << "Process " << name << " not found.\n";
+      std::cout << "Process " << name << " not found.\n" << std::flush;
       return;
     }
 
@@ -158,13 +173,13 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
       // We need to handle quoted string reconstruction? Or just join the rest.
 
       const std::string name = args[2];
-      uint32_t mem_size = 0;
-      try {
-          mem_size = std::stoul(args[3]);
-      } catch (...) {
-          std::cout << "Invalid memory size.\n";
+        uint32_t mem_size = 0;
+        try { mem_size = std::stoul(args[3]); } catch (...) { mem_size = 0; }
+        auto is_power_of_2 = [](uint32_t n){ return n && ((n & (n-1)) == 0); };
+        if (!(mem_size >= 64 && mem_size <= 65536 && is_power_of_2(mem_size))) {
+          std::cout << "invalid memory allocation\n" << std::flush;
           return;
-      }
+        }
 
       // Reconstruct instructions from args[4:]
       std::string instruction_str;
@@ -178,15 +193,17 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
           instruction_str = instruction_str.substr(1, instruction_str.size() - 2);
       }
 
-      // Parse instructions
+        // Parse instructions
       std::vector<Instruction> ins;
       std::stringstream ss(instruction_str);
       std::string segment;
+        size_t seg_count = 0;
       while (std::getline(ss, segment, ';')) {
           // Trim whitespace
           segment.erase(0, segment.find_first_not_of(" \t\n\r"));
           segment.erase(segment.find_last_not_of(" \t\n\r") + 1);
           if (segment.empty()) continue;
+          ++seg_count;
 
           // Parse segment: TYPE arg1 arg2 ...
           // Or TYPE(arg1, arg2) ?
@@ -235,18 +252,19 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
           ins.push_back(instr);
       }
 
+          if (seg_count < 1 || seg_count > 50) {
+            std::cout << "invalid command\n";
+            return;
+          }
+
       static uint32_t user_pid = 200000;
       const uint32_t pid = user_pid++;
 
       auto p = std::make_shared<Process>(pid, name, ins);
-
-      // Set memory requirement if specified
-      if (mem_size > 0) {
-        p->set_memory_requirement(mem_size);
-      }
+      p->set_memory_requirement(mem_size);
 
       scheduler_->submit_process(p);
-      std::cout << "Process " << name << " created with " << ins.size() << " instructions.\n";
+      std::cout << "Process " << name << " created with " << ins.size() << " instructions.\n" << std::flush;
       return;
   }
 
@@ -255,17 +273,41 @@ void CLI::handle_screen_command(const std::vector<std::string>& args) {
 
 int CLI::run() {
   print_banner();
+  // simple CLI diagnostics
+  try {
+    std::filesystem::create_directories("logs");
+    std::ofstream cf("logs/cli.log", std::ios::app);
+    cf << "[cli] start" << std::endl;
+    cf.close();
+  } catch (...) {}
   prompt();
 
   std::string line;
 
-  while (std::getline(std::cin, line)) {
+  while (true) {
+    if (!std::getline(std::cin, line)) {
+      // EOF detected - for testing, keep scheduler running for 10 more seconds
+      std::cout << "\n[Input ended - scheduler will continue for 10 seconds...]\n" << std::flush;
+      try { 
+        std::ofstream cf("logs/cli.log", std::ios::app); 
+        cf << "[cli] EOF - entering wait mode" << std::endl; 
+        cf.close(); 
+      } catch (...) {}
+      
+      for (int i = 10; i > 0; --i) {
+        std::cout << "Scheduler running... " << i << "s remaining (Ctrl+C to exit)\n" << std::flush;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+      std::cout << "\nTime's up. Exiting...\n" << std::flush;
+      break;
+    }
     const auto args = split(line);
     if (args.empty()) { prompt(); continue; }
 
     const std::string cmd = to_lower(args[0]);
 
     if (cmd == "exit") {
+      try { std::ofstream cf("logs/cli.log", std::ios::app); cf << "[cli] exit command" << std::endl; cf.close(); } catch (...) {}
       std::cout << "Goodbye.\n";
       scheduler_->resume();
 
@@ -275,7 +317,11 @@ int CLI::run() {
       initialize_system();
     }
     else if (cmd == "scheduler-start") {
-      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n"; scheduler_->resume(); }
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n" << std::flush; scheduler_->resume(); }
+    }
+    else if (cmd == "scheduler-test") {
+      // Alias for scheduler-start used by some test scripts
+      if (require_init()) { generator_->start(); std::cout << "Process generator started.\n" << std::flush; scheduler_->resume(); }
     }
     else if (cmd == "pause") {
       if (require_init()) { scheduler_->pause(); std::cout << "Paused.\n"; }
@@ -301,7 +347,7 @@ int CLI::run() {
 
         std::cout << "CPU utilization: " << static_cast<int>(util.percent) << "%\n"
                   << "Cores used: " << util.used << "\n"
-                  << "Cores available: " << util.total << "\n";
+                  << "Cores available: " << util.total << "\n" << std::flush;
       }
     }
     else if (cmd == "scheduler-stop") {
@@ -312,18 +358,18 @@ int CLI::run() {
     }
     else if (cmd == "report-util") {
       if (require_init()) {
-        std::cout << reporter_->build_report();
+        std::cout << reporter_->build_report() << std::flush;
         reporter_->write_log("csopesy-log.txt");
       }
     }
     else if (cmd == "process-smi") {
       if (require_init()) {
-        std::cout << reporter_->get_process_smi();
+        std::cout << reporter_->get_process_smi() << std::flush;
       }
     }
     else if (cmd == "vmstat") {
       if (require_init()) {
-        std::cout << reporter_->get_vmstat();
+        std::cout << reporter_->get_vmstat() << std::flush;
       }
     }
     else if (cmd == "help") {
@@ -333,10 +379,10 @@ int CLI::run() {
                 << "report-util: writes the report, saves to file.\n"
                 << "process-smi: displays memory usage of processes\n"
                 << "vmstat: displays system memory usage\n"
-                << "scheduler-stop: stops the scheduler\n";
+                << "scheduler-stop: stops the scheduler\n" << std::flush;
     }
     else {
-      std::cout << "Unknown command: " << line << "\n";
+      std::cout << "Unknown command: " << line << "\n" << std::flush;
     }
 
     prompt();

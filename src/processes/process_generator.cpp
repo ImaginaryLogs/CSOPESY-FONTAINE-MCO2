@@ -8,6 +8,7 @@
 #include <random>
 #include <sstream>
 #include <thread>
+#include <fstream>
 
 // Enable debug logging for the generator by uncommenting:
 // #define DEBUG_GENERATOR
@@ -124,7 +125,8 @@ static uint32_t rand_range(uint32_t min, uint32_t max) {
 static Instruction random_instruction(int depth = 0) {
   InstructionType types[] = {InstructionType::PRINT, InstructionType::DECLARE,
                              InstructionType::ADD,   InstructionType::SUBTRACT,
-                             InstructionType::SLEEP, InstructionType::FOR};
+                             InstructionType::SLEEP, InstructionType::FOR,
+                             InstructionType::READ,  InstructionType::WRITE};
   // pick a random index using the actual array size (safer than hardcoding)
   const uint32_t types_count =
       static_cast<uint32_t>(sizeof(types) / sizeof(types[0]));
@@ -155,6 +157,22 @@ static Instruction random_instruction(int depth = 0) {
   case InstructionType::SLEEP:
     instr.args.push_back(std::to_string(rand_range(1, 3)));
     break;
+  case InstructionType::READ: {
+    // READ <var> <hex_address>
+    instr.args.push_back("x");
+    uint32_t addr = rand_range(0, 1024);
+    std::ostringstream a; a << "0x" << std::hex << addr;
+    instr.args.push_back(a.str());
+    break;
+  }
+  case InstructionType::WRITE: {
+    // WRITE <hex_address> <value>
+    uint32_t addr = rand_range(0, 1024);
+    std::ostringstream a; a << "0x" << std::hex << addr;
+    instr.args.push_back(a.str());
+    instr.args.push_back(std::to_string(rand_range(0, 100)));
+    break;
+  }
   case InstructionType::FOR: {
     // FOR(repeats) with nested instructions.
     // repeats between 1 and 3 to avoid massive expansion when unrolled.
@@ -383,27 +401,37 @@ void ProcessGenerator::stop() {
  * - Uses atomic flag `running_` for coordinated shutdown.
  */
 void ProcessGenerator::loop() {
-  uint32_t last_generated_tick = 0;
+  try {
+    uint32_t last_generated_tick = 0;
 
-  while (running_.load()) {
-    uint32_t current_tick = sched_.current_tick();
-    if (sched_.get_total_active_processes() <=cfg_.max_generated_processes && current_tick - last_generated_tick >= cfg_.batch_process_freq) {
-      // generate one process
-      uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
-      uint32_t estimated_size = 0;
-      auto ins = generate_instructions(num_instructions, estimated_size);
+    while (running_.load()) {
+      uint32_t current_tick = sched_.current_tick();
+      if (sched_.get_total_active_processes() <=cfg_.max_generated_processes && current_tick - last_generated_tick >= cfg_.batch_process_freq) {
+        // generate one process
+        uint32_t num_instructions = rand_range(cfg_.min_ins, cfg_.max_ins);
+        uint32_t estimated_size = 0;
+        auto ins = generate_instructions(num_instructions, estimated_size);
 
-      uint32_t id = next_id_.fetch_add(1);
-      std::ostringstream name;
-      name << "p" << std::setw(2) << std::setfill('0') << id;
-      auto process = std::make_shared<Process>(id, name.str(), ins);
+        uint32_t id = next_id_.fetch_add(1);
+        std::ostringstream name;
+        name << "p" << std::setw(2) << std::setfill('0') << id;
+        auto process = std::make_shared<Process>(id, name.str(), ins);
 
-      sched_.submit_process(process);
-      last_generated_tick = current_tick;
+        sched_.submit_process(process);
+        last_generated_tick = current_tick;
+      }
+
+      // sleep just a bit to avoid busy-waiting
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(cfg_.scheduler_tick_delay * 4 + 10));
     }
-
-    // sleep just a bit to avoid busy-waiting
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(cfg_.scheduler_tick_delay * 4 + 10));
+  } catch (const std::exception &ex) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "ProcessGenerator exception: " << ex.what() << "\n";
+    f.close();
+  } catch (...) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "ProcessGenerator unknown exception\n";
+    f.close();
   }
 }

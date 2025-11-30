@@ -1,0 +1,149 @@
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] eof
+[cli] start
+[cli] line: initialize
+[cli] line: scheudler-start
+[cli] line: scheduler-start
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] start
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] eof
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-start
+[cli] start
+[cli] line: initialize
+[cli] line: scheduler-test
+[cli] eof
+[cli] start
+[cli] line: process-smi
+[cli] eof
+[cli] start
+[cli] line: process-smi
+[cli] eof
+[cli] start
+[cli] line: process-smi
+[cli] eof
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] exit command
+[cli] start
+[cli] exit command
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] exit command
+[cli] start
+[cli] exit command
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] start
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start
+[cli] EOF - entering wait mode
+[cli] start

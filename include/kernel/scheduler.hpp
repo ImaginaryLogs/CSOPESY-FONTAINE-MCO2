@@ -65,6 +65,10 @@ public:
   std::string snapshot_with_log();
   uint32_t current_tick() const;
   CpuUtilization cpu_utilization() const;
+  struct CpuTickStats { uint64_t busy; uint64_t idle; uint64_t total; };
+  CpuTickStats cpu_tick_stats() const;
+  void account_cpu_busy(uint32_t cpu_id);
+  void account_cpu_idle(uint32_t cpu_id);
   // === Singleton Accessor ===
   Scheduler(Scheduler &other) = delete;       // Should not be copied
   void operator=(const Scheduler &) = delete; // Should not be assigned
@@ -131,6 +135,7 @@ private:
 
   // === Scheduler Metrics ===
   std::vector<uint64_t> busy_ticks_per_cpu_;            // Busy ticks
+  std::vector<uint64_t> idle_ticks_per_cpu_;            // Idle ticks
   std::vector<uint32_t> cpu_quantum_remaining_;         // RR bookkeeping
   std::atomic<uint32_t> total_active_processes;
 

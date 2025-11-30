@@ -1,8 +1,7 @@
-TIME: (28-11-2025 02-49-45)
-Used: 4
-Total: 4
+TIME: (01-12-2025 00-25-01)
+Used: 1
+Total: 1
 CPU UTIL:100%
-p69	(28-11-2025 02-49-45)	PID=69	RR=49	LA=28977	Core: 0	349 / 419
-p63	(28-11-2025 02-49-45)	PID=63	RR=48	LA=28976	Core: 1	450 / 1105
-p58	(28-11-2025 02-49-45)	PID=58	RR=36	LA=28964	Core: 2	786 / 849
-p77	(28-11-2025 02-49-45)	PID=77	RR=35	LA=28963	Core: 3	53 / 828
+
+Core	Time	(Process Name)	(Process ID)	(Round Robin)	(Last Active Time)	(Executed Inst.)	(Total Inst.)
+Core: 0	(01-12-2025 00-25-01)	p10	PID=10	RR=9	LA=2104	33 / 72

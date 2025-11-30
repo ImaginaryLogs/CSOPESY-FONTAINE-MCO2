@@ -4,6 +4,17 @@
 #include <ctime>
 #include <bits/stdc++.h>
 
+// Helper for cross-platform thread-safe local time conversion
+static std::tm make_local_tm(time_t t) {
+    std::tm tm_buf{};
+#ifdef _WIN32
+    localtime_s(&tm_buf, &t);
+#else
+    localtime_r(&t, &tm_buf);
+#endif
+    return tm_buf;
+}
+
 void FinishedMap::insert(ProcessPtr p, uint32_t finished_tick)
 {
     std::scoped_lock lock(this->mutex_);
@@ -58,8 +69,7 @@ std::string FinishedMap::snapshot()
 
         auto &[tick, p] = *entryPtr;
 
-        std::tm tm_buf{};
-        localtime_r(&t, &tm_buf);
+        std::tm tm_buf = make_local_tm(t);
 
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"
@@ -95,8 +105,7 @@ std::string FinishedMap::print()
 
         auto &[tick, p] = *entryPtr;
 
-        std::tm tm_buf{};
-        localtime_r(&t, &tm_buf);
+        std::tm tm_buf = make_local_tm(t);
 
         oss << std::put_time(&tm_buf, "%d-%m-%Y %H:%M:%S") << "\t"
             << p->name() << "\t"

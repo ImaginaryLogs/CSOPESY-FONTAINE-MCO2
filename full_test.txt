@@ -1,0 +1,15 @@
+initialize
+scheduler-test
+process-smi
+screen -ls
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+vmstat
+exit

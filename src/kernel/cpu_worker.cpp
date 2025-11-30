@@ -4,6 +4,7 @@
 #include "util.hpp"
 #include <iostream>
 #include <syncstream>
+#include <fstream>
 
 
 
@@ -45,12 +46,14 @@ void CPUWorker::detach() {
 }
 
 void CPUWorker::loop() {
-  std::string id_str = "CPU " + std::to_string((int)this->id_);
-  const char * id = id_str.c_str();
-  while (running_.load()) {
+  try {
+    std::string id_str = "CPU " + std::to_string((int)this->id_);
+    const char * id = id_str.c_str();
+    while (running_.load()) {
 
-    while (sched_.is_paused())
+    while (sched_.is_paused()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 
     sched_.tick_barrier_sync(id_str, 1);
     DEBUG_PRINT(DEBUG_CPU_WORKER, "%s grabs a process from cpu", id);
@@ -60,6 +63,8 @@ void CPUWorker::loop() {
 
     if (!process) {
       DEBUG_PRINT(DEBUG_CPU_WORKER, "%s has none at the moment.", id);
+      // Account idle tick
+      sched_.account_cpu_idle(this->id_);
       sched_.tick_barrier_sync(id_str, 2);
       sched_.tick_barrier_sync(id_str, 3);
       continue;
@@ -75,7 +80,25 @@ void CPUWorker::loop() {
 
     if (is_yielded(context)) sched_.release_cpu_interrupt(this->id_, process, context);
 
+    // Account busy tick (we executed work this cycle)
+    sched_.account_cpu_busy(this->id_);
+
     sched_.tick_barrier_sync(id_str, 2); // Here, scheduler increases timer. Second tick barrier is essential
     sched_.tick_barrier_sync(id_str, 3);
+    
+    // CRITICAL: Sleep to match scheduler tick rate!
+    // Without this, workers loop faster than scheduler and hit barrier 1 again
+    // while scheduler is still sleeping, causing desync and deadlock
+    auto delay = sched_.get_scheduler_tick_delay();
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    }
+  } catch (const std::exception &ex) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "CPUWorker exception: " << ex.what() << "\n";
+    f.close();
+  } catch (...) {
+    std::ofstream f("logs/crash.log", std::ios::app);
+    f << "CPUWorker unknown exception\n";
+    f.close();
   }
 }
