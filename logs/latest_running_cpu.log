@@ -1,7 +1,10 @@
-TIME: (01-12-2025 00-25-01)
-Used: 1
-Total: 1
+TIME: (01-12-2025 00-51-47)
+Used: 4
+Total: 4
 CPU UTIL:100%
 
 Core	Time	(Process Name)	(Process ID)	(Round Robin)	(Last Active Time)	(Executed Inst.)	(Total Inst.)
-Core: 0	(01-12-2025 00-25-01)	p10	PID=10	RR=9	LA=2104	33 / 72
+Core: 0	(01-12-2025 00-51-47)	p02	PID=2	RR=3	LA=3233	38 / 2408
+Core: 1	(01-12-2025 00-51-47)	p20	PID=20	RR=3	LA=3202	68 / 2595
+Core: 2	(01-12-2025 00-51-47)	p19	PID=19	RR=3	LA=3230	35 / 2706
+Core: 3	(01-12-2025 00-51-47)	p11	PID=11	RR=3	LA=3234	48 / 2701

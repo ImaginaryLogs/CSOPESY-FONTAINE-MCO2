@@ -38,10 +38,28 @@ void Scheduler::long_term_admission()
 
     p->initialize_memory(mem_size, cfg_.mem_per_frame);
 
+    // EAGER ALLOCATION: Pre-allocate all pages for the process
+    // This will cause deadlock if total memory requirement exceeds available RAM
+    size_t num_pages = mem_size / cfg_.mem_per_frame;
+    for (size_t page = 0; page < num_pages; ++page) {
+      auto res = MemoryManager::getInstance().request_page(p->id(), page, false);
+      p->update_page_table(page, res.frame_idx);
+      
+      // Handle eviction if needed
+      if (res.evicted_page) {
+        uint32_t victim_pid = res.evicted_page->first;
+        size_t victim_page = res.evicted_page->second;
+        auto victim = get_process(victim_pid);
+        if (victim) {
+          victim->invalidate_page(victim_page);
+        }
+      }
+    }
+
     // Add to process map
     process_map_[p->id()] = p;
 
-    DEBUG_PRINT(DEBUG_SCHEDULER, "Admitting process %d with %zu bytes memory", p->id(), mem_size);
+    DEBUG_PRINT(DEBUG_SCHEDULER, "Admitting process %d with %zu bytes memory (%zu pages)", p->id(), mem_size, num_pages);
 
     p->set_state(ProcessState::READY);
     ready_queue_.send(p);
