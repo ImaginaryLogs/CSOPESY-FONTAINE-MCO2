@@ -70,15 +70,15 @@ One scheduler thread coordinates phases each tick; N worker threads execute proc
 ```mermaid
 flowchart LR
   subgraph CLI
-    CLI[CLI REPL]\n(src/cli.cpp)
-    RPTR[Reporter]\n(src/reporter.cpp)
+    CLI[CLI REPL]<br>(src/cli.cpp)
+    RPTR[Reporter]<br>(src/reporter.cpp)
   end
 
   subgraph Core
-    SCH[Scheduler\n(src/scheduler.cpp)]
-    RQ[Ready Queue\nDynamicVictimChannel]
-    JQ[Job Queue\nChannel<Process>]
-    SQ[Sleep Queue\npriority_queue]
+    SCH[Scheduler<br>(src/scheduler.cpp)]
+    RQ[Ready Queue<br>DynamicVictimChannel]
+    JQ[Job Queue<br>Channel<Process>]
+    SQ[Sleep Queue<br>priority_queue]
     FM[FinishedMap]
   end
 
