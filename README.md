@@ -69,34 +69,35 @@ One scheduler thread coordinates phases each tick; N worker threads execute proc
 
 ```mermaid
 flowchart LR
-  subgraph CLI
-    CLI[CLI REPL]<br>(src/cli.cpp)
-    RPTR[Reporter]<br>(src/reporter.cpp)
+  subgraph subgraph_cli [CLI]
+    CLI["CLI REPL<br>(src/cli.cpp)"]
+    RPTR["Reporter<br>(src/reporter.cpp)"]
   end
 
   subgraph Core
-    SCH[Scheduler<br>(src/scheduler.cpp)]
-    RQ[Ready Queue<br>DynamicVictimChannel]
-    JQ[Job Queue<br>Channel<Process>]
-    SQ[Sleep Queue<br>priority_queue]
+    SCH["Scheduler<br>(src/scheduler.cpp)"]
+    RQ["Ready Queue<br>DynamicVictimChannel"]
+    JQ["Job Queue<br>Channel&lt;Process&gt;"]
+    SQ["Sleep Queue<br>priority_queue"]
     FM[FinishedMap]
   end
 
   subgraph Workers
-    W1[CPUWorker #0]
-    Wn[CPUWorker #N-1]
+    W1["CPUWorker #0"]
+    Wn["CPUWorker #N-1"]
   end
 
   subgraph Gen
     PG[ProcessGenerator]
   end
 
-  CLI -- report-util --> RPTR -- snapshot() --> SCH
-  PG -- submit_process(p) --> JQ
+  CLI -- report-util --> RPTR
+  RPTR -- "snapshot()" --> SCH
+  PG -- "submit_process(p)" --> JQ
   JQ --> SCH
   SCH -- admit --> RQ
   RQ -- dispatch --> Workers
-  Workers -- execute_tick() / yield --> SCH
+  Workers -- "execute_tick() / yield" --> SCH
   SCH -- sleep --> SQ
   SCH -- finish --> FM
 ```
